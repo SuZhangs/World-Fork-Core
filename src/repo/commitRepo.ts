@@ -70,3 +70,39 @@ export const findCommonAncestor = async (commitA?: string | null, commitB?: stri
 
   return null;
 };
+
+export const listCommitsByBranchHead = async (
+  headCommitId: string | null | undefined,
+  limit: number,
+  cursor?: string
+) => {
+  if (!headCommitId) {
+    return { commits: [], nextCursor: null as string | null };
+  }
+
+  let currentId = headCommitId;
+  if (cursor) {
+    const cursorCommit = await prisma.commit.findUnique({ where: { id: cursor } });
+    currentId = cursorCommit?.parentCommitId ?? null;
+  }
+
+  const commits = [];
+  let nextCursor: string | null = null;
+
+  // NOTE: v0.1 traverses only the first parent for linear history.
+  while (currentId && commits.length < limit + 1) {
+    const commit = await prisma.commit.findUnique({ where: { id: currentId } });
+    if (!commit) {
+      break;
+    }
+    commits.push(commit);
+    currentId = commit.parentCommitId ?? null;
+  }
+
+  if (commits.length > limit) {
+    commits.pop();
+    nextCursor = commits[commits.length - 1]?.id ?? null;
+  }
+
+  return { commits, nextCursor };
+};

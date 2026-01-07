@@ -50,3 +50,27 @@ export const getCommitUnitSnapshots = async (commitId: string) => {
   }
   return units;
 };
+
+export const listUnitsByBranch = async (branchId: string, type?: string) => {
+  const states = await prisma.unitState.findMany({ where: { branchId } });
+  return states
+    .map((state) => JSON.parse(state.contentJson) as UnitContent)
+    .filter((unit) => (type ? unit.type === type : true));
+};
+
+export const listUnitsByCommit = async (commitId: string, type?: string) => {
+  const snapshots = await prisma.unitSnapshot.findMany({ where: { commitId } });
+  return snapshots
+    .map((snapshot) => JSON.parse(snapshot.contentJson) as UnitContent)
+    .filter((unit) => (type ? unit.type === type : true));
+};
+
+export const getUnitByBranch = async (branchId: string, unitId: string) => {
+  const state = await prisma.unitState.findUnique({ where: { branchId_unitId: { branchId, unitId } } });
+  return state ? (JSON.parse(state.contentJson) as UnitContent) : null;
+};
+
+export const getUnitByCommit = async (commitId: string, unitId: string) => {
+  const snapshot = await prisma.unitSnapshot.findFirst({ where: { commitId, unitId } });
+  return snapshot ? (JSON.parse(snapshot.contentJson) as UnitContent) : null;
+};

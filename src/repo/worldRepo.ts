@@ -22,3 +22,21 @@ export const createWorld = async (name: string, description?: string | null) => 
 };
 
 export const getWorld = (worldId: string) => prisma.world.findUnique({ where: { id: worldId } });
+
+export const listWorlds = () =>
+  prisma.world.findMany({
+    orderBy: { createdAt: "desc" }
+  });
+
+export const getWorldWithBranches = (worldId: string) =>
+  prisma.world.findUnique({
+    where: { id: worldId },
+    include: {
+      branches: {
+        include: {
+          headCommit: true
+        },
+        orderBy: { createdAt: "desc" }
+      }
+    }
+  });

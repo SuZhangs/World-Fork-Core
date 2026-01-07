@@ -40,3 +40,15 @@ export const createBranch = async (
 
 export const updateBranchHead = (branchId: string, commitId: string) =>
   prisma.branch.update({ where: { id: branchId }, data: { headCommitId: commitId } });
+
+export const listBranches = (worldId: string, name?: string) =>
+  prisma.branch.findMany({
+    where: {
+      worldId,
+      ...(name ? { name } : {})
+    },
+    include: {
+      headCommit: true
+    },
+    orderBy: { createdAt: "desc" }
+  });
