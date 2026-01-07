@@ -15,12 +15,34 @@ WorldFork Core 是一个最小闭环原型：建世界 → 写 Unit → 提交 �
 ## 开始使用
 
 ```bash
-npm i
+npm install
 npm run prisma:generate
 npm run dev
 ```
 
 默认使用 SQLite（`prisma/dev.db`）。
+
+## 快速开始（从拉取到运行）
+
+```bash
+# 0) 克隆/进入项目
+git clone <your-repo-url>
+cd World-Fork-Core
+
+# 1) 安装依赖
+npm install
+
+# 2) 生成 Prisma Client
+npm run prisma:generate
+
+# 3) 运行数据库迁移
+npm run prisma:migrate
+
+# 4) 启动服务
+npm run dev
+```
+
+默认监听 http://localhost:3000
 
 ## API 演示流程（可直接复制）
 

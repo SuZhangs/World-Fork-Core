@@ -26,8 +26,8 @@ CREATE TABLE "Commit" (
     "parentCommitId2" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "Commit_worldId_fkey" FOREIGN KEY ("worldId") REFERENCES "World" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "Commit_parentCommitId_fkey" FOREIGN KEY ("parentCommitId") REFERENCES "Commit" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT "Commit_parentCommitId2_fkey" FOREIGN KEY ("parentCommitId2") REFERENCES "Commit" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+    CONSTRAINT "Commit_parentCommitId_fkey" FOREIGN KEY ("parentCommitId") REFERENCES "Commit" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "Commit_parentCommitId2_fkey" FOREIGN KEY ("parentCommitId2") REFERENCES "Commit" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
