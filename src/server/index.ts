@@ -13,7 +13,14 @@ import { mergeUnits } from "../core/merge.js";
 import { prisma } from "../repo/prisma.js";
 import { UnitContent } from "../core/types.js";
 
-const app = Fastify({ logger: true });
+const app = Fastify({
+  logger: true,
+  ajv: {
+    customOptions: {
+      keywords: ["example"]
+    }
+  }
+});
 
 const toSchema = (schema: z.ZodTypeAny) => zodToJsonSchema(schema, { target: "openApi3" });
 const withExample = <T extends Record<string, unknown>>(schema: T, example: unknown) => ({
@@ -226,15 +233,13 @@ await app.register(swagger, {
       description: "WorldFork Core API for worlds, branches, units, commits, diff, and merge."
     },
     servers: [{ url: "http://localhost:3000" }]
-  },
-  exposeRoute: false
+  }
 });
 
 await app.register(swaggerUi, {
   routePrefix: "/docs",
   uiConfig: {
-    docExpansion: "list",
-    url: "/openapi.json"
+    docExpansion: "list"
   }
 });
 
