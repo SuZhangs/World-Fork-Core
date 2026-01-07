@@ -317,7 +317,7 @@ app.post("/v1/worlds/:worldId/merge", async (request, reply) => {
     id: nanoid(),
     commitId: mergeCommit.id,
     unitId: unit.id,
-    contentJson: unit
+    contentJson: JSON.stringify(unit)
   }));
 
   if (snapshotData.length > 0) {

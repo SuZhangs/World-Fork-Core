@@ -7,6 +7,7 @@ export const upsertUnitState = async (
   branchId: string,
   content: UnitContent
 ) => {
+  const contentJson = JSON.stringify(content);
   const unit = await prisma.unit.upsert({
     where: { id: content.id },
     update: {},
@@ -22,10 +23,10 @@ export const upsertUnitState = async (
       id: nanoid(),
       branchId,
       unitId: unit.id,
-      contentJson: content
+      contentJson
     },
     update: {
-      contentJson: content
+      contentJson
     }
   });
 
@@ -36,7 +37,7 @@ export const getBranchUnitStates = async (branchId: string) => {
   const states = await prisma.unitState.findMany({ where: { branchId } });
   const units: Record<string, UnitContent> = {};
   for (const state of states) {
-    units[state.unitId] = state.contentJson as UnitContent;
+    units[state.unitId] = JSON.parse(state.contentJson) as UnitContent;
   }
   return units;
 };
@@ -45,7 +46,7 @@ export const getCommitUnitSnapshots = async (commitId: string) => {
   const snapshots = await prisma.unitSnapshot.findMany({ where: { commitId } });
   const units: Record<string, UnitContent> = {};
   for (const snapshot of snapshots) {
-    units[snapshot.unitId] = snapshot.contentJson as UnitContent;
+    units[snapshot.unitId] = JSON.parse(snapshot.contentJson) as UnitContent;
   }
   return units;
 };
