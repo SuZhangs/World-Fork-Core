@@ -4,6 +4,7 @@ export type UnitContent = {
   title: string;
   fields: Record<string, unknown>;
   refs?: Record<string, unknown>;
+  meta?: Record<string, unknown>;
 };
 
 export type World = {
