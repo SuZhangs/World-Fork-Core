@@ -168,7 +168,7 @@ const branchListQuerySchema = z.object({
 
 const commitListQuerySchema = z.object({
   branchName: z.string().min(1),
-  limit: z.coerce.number().int().positive().max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
   cursor: z.string().optional()
 });
 
