@@ -44,6 +44,15 @@ npm run dev
 
 默认监听 http://localhost:3000
 
+
+## API 文档
+
+启动服务后可以查看两种文档：
+
+- **机器可读**：`http://localhost:3000/openapi.json`
+- **人可读**：`http://localhost:3000/docs
+
+
 ## API 演示流程（可直接复制）
 
 > 请先启动服务：`npm run dev`
