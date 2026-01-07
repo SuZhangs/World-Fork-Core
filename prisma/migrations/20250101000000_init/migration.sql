@@ -43,7 +43,7 @@ CREATE TABLE "UnitSnapshot" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "commitId" TEXT NOT NULL,
     "unitId" TEXT NOT NULL,
-    "contentJson" JSON NOT NULL,
+    "contentJson" TEXT NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "UnitSnapshot_commitId_fkey" FOREIGN KEY ("commitId") REFERENCES "Commit" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "UnitSnapshot_unitId_fkey" FOREIGN KEY ("unitId") REFERENCES "Unit" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
@@ -54,7 +54,7 @@ CREATE TABLE "UnitState" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "branchId" TEXT NOT NULL,
     "unitId" TEXT NOT NULL,
-    "contentJson" JSON NOT NULL,
+    "contentJson" TEXT NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "UnitState_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "Branch" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "UnitState_unitId_fkey" FOREIGN KEY ("unitId") REFERENCES "Unit" ("id") ON DELETE RESTRICT ON UPDATE CASCADE

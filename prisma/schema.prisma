@@ -38,8 +38,10 @@ model Commit {
   parentCommitId2 String?
   createdAt       DateTime @default(now())
   world           World    @relation(fields: [worldId], references: [id])
-  parentCommit    Commit?  @relation("CommitParent", fields: [parentCommitId], references: [id])
-  parentCommit2   Commit?  @relation("CommitParent2", fields: [parentCommitId2], references: [id])
+  parentCommit    Commit?  @relation("CommitParent", fields: [parentCommitId], references: [id], onDelete: Cascade)
+  parentCommit2   Commit?  @relation("CommitParent2", fields: [parentCommitId2], references: [id], onDelete: Cascade)
+  childCommits    Commit[] @relation("CommitParent")
+  childCommits2   Commit[] @relation("CommitParent2")
   snapshots       UnitSnapshot[]
   branchesHead    Branch[] @relation("BranchHead")
 }
@@ -57,7 +59,7 @@ model UnitSnapshot {
   id         String   @id
   commitId   String
   unitId     String
-  contentJson Json
+  contentJson String
   createdAt  DateTime @default(now())
   commit     Commit   @relation(fields: [commitId], references: [id])
   unit       Unit     @relation(fields: [unitId], references: [id])
@@ -70,7 +72,7 @@ model UnitState {
   id         String   @id
   branchId   String
   unitId     String
-  contentJson Json
+  contentJson String
   createdAt  DateTime @default(now())
   branch     Branch   @relation(fields: [branchId], references: [id])
   unit       Unit     @relation(fields: [unitId], references: [id])
