@@ -1,4 +1,5 @@
 import createFetchClient from "openapi-fetch";
+import type { FetchResponse } from "openapi-fetch";
 import type { paths } from "./generated/schema";
 
 export type { paths };
@@ -55,6 +56,20 @@ const unwrap = async <T>(promise: Promise<{ data?: T; error?: unknown }>): Promi
     throw error;
   }
   return data as T;
+};
+
+const unwrapWithStatus = async <R extends FetchResponse<any, any, any>>(
+  promise: Promise<R>,
+  expectedStatus: number
+): Promise<NonNullable<R["data"]>> => {
+  const { data, error, response } = await promise;
+  if (error) {
+    throw error;
+  }
+  if (response.status !== expectedStatus) {
+    throw new Error(`Unexpected response status ${response.status}`);
+  }
+  return data as NonNullable<R["data"]>;
 };
 
 export const createClient = ({ baseUrl, fetch }: WorldForkClientOptions) => {
@@ -135,18 +150,20 @@ export const createClient = ({ baseUrl, fetch }: WorldForkClientOptions) => {
         })
       ),
     mergePreview: (worldId: string, body: Omit<MergeBody, "resolutions">) =>
-      unwrap<MergePreviewResponse>(
+      unwrapWithStatus(
         client.POST("/v1/worlds/{worldId}/merge", {
           params: { path: { worldId } },
           body
-        })
+        }),
+        200
       ),
     mergeApply: (worldId: string, body: MergeBody & { resolutions: MergeResolution[] }) =>
-      unwrap<MergeApplyResponse>(
+      unwrapWithStatus(
         client.POST("/v1/worlds/{worldId}/merge", {
           params: { path: { worldId } },
           body
-        })
+        }),
+        201
       )
   };
 };

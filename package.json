@@ -15,9 +15,10 @@
     "prisma:generate": "prisma generate"
   },
   "dependencies": {
-    "@prisma/client": "^5.19.1",
     "@fastify/swagger": "^8.15.0",
     "@fastify/swagger-ui": "^3.1.0",
+    "@prisma/client": "^5.19.1",
+    "@worldfork/sdk": "^0.1.0",
     "fastify": "^4.28.1",
     "nanoid": "^5.0.7",
     "zod": "^3.23.8",
