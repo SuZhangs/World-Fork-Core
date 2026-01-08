@@ -15,6 +15,7 @@ build/
 *.js.map
 *.d.ts
 !vitest.config.ts
+!packages/sdk/src/generated/schema.d.ts
 
 # IDE
 .vscode/
