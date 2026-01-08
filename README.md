@@ -50,7 +50,7 @@ npm run dev
 启动服务后可以查看两种文档：
 
 - **机器可读**：`http://localhost:3000/openapi.json`
-- **人可读**：`http://localhost:3000/docs
+- **人可读**：`http://localhost:3000/docs`
 
 
 ## API 演示流程（可直接复制）
@@ -137,3 +137,32 @@ echo "MERGE_COMMIT=$MERGE_COMMIT"
   }
 }
 ```
+
+## SDK（TypeScript）
+
+仓库内提供 `@worldfork/sdk` npm 包（位于 `packages/sdk`），用于类型安全地调用 API。
+
+### 生成 OpenAPI 文件
+
+```bash
+npm run openapi:export
+```
+
+### 本地生成 SDK 类型与构建
+
+```bash
+cd packages/sdk
+npm run gen
+npm run build
+```
+
+### 发布（手动）
+
+```bash
+npm publish --access public
+```
+
+### 发布（GitHub Actions）
+
+1. 在 GitHub 仓库的 Secrets 中添加 `NPM_TOKEN`。
+2. 推送 tag（如 `sdk-v0.1.0`）或手动触发 workflow：`.github/workflows/publish-sdk.yml`。
