@@ -28,6 +28,21 @@ export const listWorlds = () =>
     orderBy: { createdAt: "desc" }
   });
 
+export const listWorldsPaged = async (limit: number, cursor?: string) => {
+  const where = cursor ? { id: { lt: cursor } } : {};
+  const worlds = await prisma.world.findMany({
+    where,
+    orderBy: { id: "desc" },
+    take: limit + 1
+  });
+
+  const hasNext = worlds.length > limit;
+  const items = hasNext ? worlds.slice(0, limit) : worlds;
+  const nextCursor = hasNext ? items[items.length - 1]?.id ?? null : null;
+
+  return { items, nextCursor };
+};
+
 export const getWorldWithBranches = (worldId: string) =>
   prisma.world.findUnique({
     where: { id: worldId },

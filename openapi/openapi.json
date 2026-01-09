@@ -24,6 +24,36 @@
         "tags": [
           "Worlds"
         ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            "in": "query",
+            "name": "cursor",
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "Default Response",
@@ -32,7 +62,7 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "worlds": {
+                    "items": {
                       "type": "array",
                       "items": {
                         "type": "object",
@@ -50,30 +80,81 @@
                           "createdAt": {
                             "type": "string",
                             "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
                           }
                         },
                         "required": [
                           "id",
                           "name",
-                          "createdAt"
+                          "createdAt",
+                          "updatedAt"
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
                     }
                   },
                   "required": [
-                    "worlds"
+                    "items",
+                    "nextCursor"
                   ],
                   "additionalProperties": false,
                   "example": {
-                    "worlds": [
+                    "items": [
                       {
                         "id": "world_123",
                         "name": "Eldoria",
                         "description": "Shared universe for lore",
-                        "createdAt": "2024-01-01T00:00:00.000Z"
+                        "createdAt": "2024-01-01T00:00:00.000Z",
+                        "updatedAt": "2024-01-01T00:00:00.000Z"
                       }
-                    ]
+                    ],
+                    "nextCursor": null
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "INVALID_INPUT",
+                      "message": "Invalid request"
+                    }
                   }
                 }
               }
@@ -233,6 +314,10 @@
                       "type": "string",
                       "format": "date-time"
                     },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
                     "branches": {
                       "type": "array",
                       "items": {
@@ -241,9 +326,16 @@
                           "name": {
                             "type": "string"
                           },
+                          "worldId": {
+                            "type": "string"
+                          },
                           "headCommitId": {
                             "type": "string",
                             "nullable": true
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
                           },
                           "updatedAt": {
                             "type": "string",
@@ -252,6 +344,8 @@
                         },
                         "required": [
                           "name",
+                          "worldId",
+                          "createdAt",
                           "updatedAt"
                         ],
                         "additionalProperties": false
@@ -262,6 +356,7 @@
                     "id",
                     "name",
                     "createdAt",
+                    "updatedAt",
                     "branches"
                   ],
                   "additionalProperties": false,
@@ -270,10 +365,13 @@
                     "name": "Eldoria",
                     "description": "Shared universe for lore",
                     "createdAt": "2024-01-01T00:00:00.000Z",
+                    "updatedAt": "2024-01-01T00:00:00.000Z",
                     "branches": [
                       {
                         "name": "main",
+                        "worldId": "world_123",
                         "headCommitId": "commit_123",
+                        "createdAt": "2024-01-01T00:00:00.000Z",
                         "updatedAt": "2024-01-02T00:00:00.000Z"
                       }
                     ]
@@ -396,7 +494,7 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "branches": {
+                    "items": {
                       "type": "array",
                       "items": {
                         "type": "object",
@@ -404,9 +502,16 @@
                           "name": {
                             "type": "string"
                           },
+                          "worldId": {
+                            "type": "string"
+                          },
                           "headCommitId": {
                             "type": "string",
                             "nullable": true
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
                           },
                           "updatedAt": {
                             "type": "string",
@@ -415,6 +520,8 @@
                         },
                         "required": [
                           "name",
+                          "worldId",
+                          "createdAt",
                           "updatedAt"
                         ],
                         "additionalProperties": false
@@ -422,14 +529,16 @@
                     }
                   },
                   "required": [
-                    "branches"
+                    "items"
                   ],
                   "additionalProperties": false,
                   "example": {
-                    "branches": [
+                    "items": [
                       {
                         "name": "main",
+                        "worldId": "world_123",
                         "headCommitId": "commit_123",
+                        "createdAt": "2024-01-01T00:00:00.000Z",
                         "updatedAt": "2024-01-02T00:00:00.000Z"
                       }
                     ]
@@ -703,13 +812,13 @@
             },
             "in": "query",
             "name": "branchName",
-            "required": true
+            "required": false
           },
           {
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 200
+              "maximum": 100
             },
             "in": "query",
             "name": "limit",
@@ -741,7 +850,7 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "commits": {
+                    "items": {
                       "type": "array",
                       "items": {
                         "type": "object",
@@ -749,19 +858,14 @@
                           "id": {
                             "type": "string"
                           },
-                          "worldId": {
-                            "type": "string"
-                          },
                           "message": {
                             "type": "string"
                           },
-                          "parentCommitId": {
-                            "type": "string",
-                            "nullable": true
-                          },
-                          "parentCommitId2": {
-                            "type": "string",
-                            "nullable": true
+                          "parents": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
                           },
                           "createdAt": {
                             "type": "string",
@@ -770,8 +874,8 @@
                         },
                         "required": [
                           "id",
-                          "worldId",
                           "message",
+                          "parents",
                           "createdAt"
                         ],
                         "additionalProperties": false
@@ -783,17 +887,16 @@
                     }
                   },
                   "required": [
-                    "commits"
+                    "items",
+                    "nextCursor"
                   ],
                   "additionalProperties": false,
                   "example": {
-                    "commits": [
+                    "items": [
                       {
                         "id": "commit_123",
-                        "worldId": "world_123",
                         "message": "Add new storyline",
-                        "parentCommitId": null,
-                        "parentCommitId2": null,
+                        "parents": [],
                         "createdAt": "2024-01-01T00:00:00.000Z"
                       }
                     ],
@@ -1058,6 +1161,160 @@
         }
       }
     },
+    "/v1/worlds/{worldId}/commits/{commitId}": {
+      "get": {
+        "summary": "Get a commit",
+        "tags": [
+          "Commits"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "worldId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "commitId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "parents": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "worldId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "message",
+                    "parents",
+                    "createdAt",
+                    "worldId"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "id": "commit_123",
+                    "message": "Add new storyline",
+                    "parents": [],
+                    "createdAt": "2024-01-01T00:00:00.000Z",
+                    "worldId": "world_123"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "INVALID_INPUT",
+                      "message": "Invalid request"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "COMMIT_NOT_FOUND",
+                      "message": "Commit not found"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/worlds/{worldId}/units": {
       "get": {
         "summary": "List units for a ref",
@@ -1076,10 +1333,28 @@
           },
           {
             "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
               "type": "string"
             },
             "in": "query",
-            "name": "type",
+            "name": "cursor",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "includeContent",
             "required": false
           },
           {
@@ -1100,49 +1375,86 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "units": {
+                    "items": {
                       "type": "array",
                       "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "string"
-                          },
-                          "type": {
-                            "type": "string"
-                          },
-                          "title": {
-                            "type": "string"
-                          },
-                          "fields": {
+                        "anyOf": [
+                          {
                             "type": "object",
-                            "additionalProperties": {}
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "type",
+                              "title"
+                            ],
+                            "additionalProperties": false
                           },
-                          "refs": {
+                          {
                             "type": "object",
-                            "additionalProperties": {}
-                          },
-                          "meta": {
-                            "type": "object",
-                            "additionalProperties": {}
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "fields": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              "refs": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              "meta": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "type",
+                              "title",
+                              "fields"
+                            ],
+                            "additionalProperties": false
                           }
-                        },
-                        "required": [
-                          "id",
-                          "type",
-                          "title",
-                          "fields"
-                        ],
-                        "additionalProperties": false
+                        ]
                       }
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
                     }
                   },
                   "required": [
-                    "units"
+                    "items",
+                    "nextCursor"
                   ],
                   "additionalProperties": false,
                   "example": {
-                    "units": [
+                    "items": [
                       {
                         "id": "unit_123",
                         "type": "character",
@@ -1160,7 +1472,8 @@
                           ]
                         }
                       }
-                    ]
+                    ],
+                    "nextCursor": null
                   }
                 }
               }
@@ -1537,6 +1850,10 @@
                     "meta": {
                       "type": "object",
                       "additionalProperties": {}
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
                     }
                   },
                   "required": [
@@ -1561,7 +1878,8 @@
                       "tags": [
                         "hero"
                       ]
-                    }
+                    },
+                    "updatedAt": "2024-01-01T00:00:00.000Z"
                   }
                 }
               }

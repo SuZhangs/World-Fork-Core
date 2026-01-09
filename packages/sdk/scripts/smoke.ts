@@ -14,7 +14,7 @@ await client.createBranch(world.id, {
   sourceBranch: "main"
 });
 
-const list = await client.listWorlds();
+const list = await client.listWorlds({ limit: 10 });
 
 console.log("Smoke test world:", world.id);
-console.log("World count:", list.worlds.length);
+console.log("World count:", list.items.length);

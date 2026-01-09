@@ -47,7 +47,10 @@ export interface paths {
         /** List worlds */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    limit?: number;
+                    cursor?: string | string[];
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -61,13 +64,31 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            worlds: {
+                            items: {
                                 id: string;
                                 name: string;
                                 description?: string | null;
                                 /** Format: date-time */
                                 createdAt: string;
+                                /** Format: date-time */
+                                updatedAt: string;
                             }[];
+                            nextCursor: string | null;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
                         };
                     };
                 };
@@ -160,9 +181,14 @@ export interface paths {
                             description?: string | null;
                             /** Format: date-time */
                             createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
                             branches: {
                                 name: string;
+                                worldId: string;
                                 headCommitId?: string | null;
+                                /** Format: date-time */
+                                createdAt: string;
                                 /** Format: date-time */
                                 updatedAt: string;
                             }[];
@@ -237,9 +263,12 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            branches: {
+                            items: {
                                 name: string;
+                                worldId: string;
                                 headCommitId?: string | null;
+                                /** Format: date-time */
+                                createdAt: string;
                                 /** Format: date-time */
                                 updatedAt: string;
                             }[];
@@ -363,8 +392,8 @@ export interface paths {
         /** List commits for a branch */
         get: {
             parameters: {
-                query: {
-                    branchName: string;
+                query?: {
+                    branchName?: string;
                     limit?: number;
                     cursor?: string;
                 };
@@ -383,16 +412,14 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            commits: {
+                            items: {
                                 id: string;
-                                worldId: string;
                                 message: string;
-                                parentCommitId?: string | null;
-                                parentCommitId2?: string | null;
+                                parents: string[];
                                 /** Format: date-time */
                                 createdAt: string;
                             }[];
-                            nextCursor?: string | null;
+                            nextCursor: string | null;
                         };
                     };
                 };
@@ -503,6 +530,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/worlds/{worldId}/commits/{commitId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a commit */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    worldId: string;
+                    commitId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            message: string;
+                            parents: string[];
+                            /** Format: date-time */
+                            createdAt: string;
+                            worldId: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/worlds/{worldId}/units": {
         parameters: {
             query?: never;
@@ -515,7 +618,9 @@ export interface paths {
             parameters: {
                 query: {
                     ref: string;
-                    type?: string;
+                    limit?: number;
+                    cursor?: string;
+                    includeContent?: boolean;
                 };
                 header?: never;
                 path: {
@@ -532,7 +637,13 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            units: {
+                            items: ({
+                                id: string;
+                                type: string;
+                                title: string;
+                                /** Format: date-time */
+                                updatedAt?: string;
+                            } | {
                                 id: string;
                                 type: string;
                                 title: string;
@@ -545,7 +656,10 @@ export interface paths {
                                 meta?: {
                                     [key: string]: unknown;
                                 };
-                            }[];
+                                /** Format: date-time */
+                                updatedAt?: string;
+                            })[];
+                            nextCursor: string | null;
                         };
                     };
                 };
@@ -715,6 +829,8 @@ export interface paths {
                             meta?: {
                                 [key: string]: unknown;
                             };
+                            /** Format: date-time */
+                            updatedAt?: string;
                         };
                     };
                 };

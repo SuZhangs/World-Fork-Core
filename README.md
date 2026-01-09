@@ -124,6 +124,35 @@ MERGE_COMMIT=$(curl -s -X POST http://localhost:3000/v1/worlds/$WORLD_ID/merge \
 echo "MERGE_COMMIT=$MERGE_COMMIT"
 ```
 
+## 读接口演示（可直接复制）
+
+```bash
+# 9) 列世界（分页）
+curl -s "http://localhost:3000/v1/worlds?limit=1" | jq
+
+NEXT_CURSOR=$(curl -s "http://localhost:3000/v1/worlds?limit=1" | jq -r '.nextCursor')
+curl -s "http://localhost:3000/v1/worlds?limit=1&cursor=$NEXT_CURSOR" | jq
+
+# 10) 列分支
+curl -s "http://localhost:3000/v1/worlds/$WORLD_ID/branches" | jq
+
+# 11) 列 commits（分页）
+curl -s "http://localhost:3000/v1/worlds/$WORLD_ID/commits?branchName=main&limit=2" | jq
+
+COMMIT_CURSOR=$(curl -s "http://localhost:3000/v1/worlds/$WORLD_ID/commits?branchName=main&limit=2" | jq -r '.nextCursor')
+curl -s "http://localhost:3000/v1/worlds/$WORLD_ID/commits?branchName=main&limit=2&cursor=$COMMIT_CURSOR" | jq
+
+# 12) 列 units（branch ref + commit ref）
+curl -s "http://localhost:3000/v1/worlds/$WORLD_ID/units?ref=branch:main&limit=10&includeContent=false" | jq
+
+COMMIT_ID=$(curl -s "http://localhost:3000/v1/worlds/$WORLD_ID/commits?branchName=main&limit=1" | jq -r '.items[0].id')
+curl -s "http://localhost:3000/v1/worlds/$WORLD_ID/units?ref=commit:$COMMIT_ID&limit=10&includeContent=true" | jq
+
+# 13) 读单个 unit（branch ref + commit ref）
+curl -s "http://localhost:3000/v1/worlds/$WORLD_ID/units/$UNIT_ID?ref=branch:main" | jq
+curl -s "http://localhost:3000/v1/worlds/$WORLD_ID/units/$UNIT_ID?ref=commit:$COMMIT_ID" | jq
+```
+
 ## 错误格式
 
 所有错误统一返回：

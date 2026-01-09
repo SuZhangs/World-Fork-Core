@@ -23,6 +23,9 @@ export type ListBranchesResponse = JsonResponseBody<
 export type ListCommitsResponse = JsonResponseBody<
   paths["/v1/worlds/{worldId}/commits"]["get"]["responses"]["200"]
 >;
+export type GetCommitResponse = JsonResponseBody<
+  paths["/v1/worlds/{worldId}/commits/{commitId}"]["get"]["responses"]["200"]
+>;
 export type GetUnitsResponse = JsonResponseBody<paths["/v1/worlds/{worldId}/units"]["get"]["responses"]["200"]>;
 export type GetUnitResponse = JsonResponseBody<
   paths["/v1/worlds/{worldId}/units/{unitId}"]["get"]["responses"]["200"]
@@ -77,7 +80,14 @@ export const createClient = ({ baseUrl, fetch }: WorldForkClientOptions) => {
 
   return {
     client,
-    listWorlds: () => unwrap<ListWorldsResponse>(client.GET("/v1/worlds")),
+    listWorlds: (query?: paths["/v1/worlds"]["get"]["parameters"]["query"]) =>
+      unwrap<ListWorldsResponse>(
+        client.GET("/v1/worlds", {
+          params: {
+            query
+          }
+        })
+      ),
     listBranches: (worldId: string, query?: paths["/v1/worlds/{worldId}/branches"]["get"]["parameters"]["query"]) =>
       unwrap<ListBranchesResponse>(
         client.GET("/v1/worlds/{worldId}/branches", {
@@ -87,12 +97,23 @@ export const createClient = ({ baseUrl, fetch }: WorldForkClientOptions) => {
           }
         })
       ),
-    listCommits: (worldId: string, query: paths["/v1/worlds/{worldId}/commits"]["get"]["parameters"]["query"]) =>
+    listCommits: (
+      worldId: string,
+      query?: paths["/v1/worlds/{worldId}/commits"]["get"]["parameters"]["query"]
+    ) =>
       unwrap<ListCommitsResponse>(
         client.GET("/v1/worlds/{worldId}/commits", {
           params: {
             path: { worldId },
             query
+          }
+        })
+      ),
+    getCommit: (worldId: string, commitId: string) =>
+      unwrap<GetCommitResponse>(
+        client.GET("/v1/worlds/{worldId}/commits/{commitId}", {
+          params: {
+            path: { worldId, commitId }
           }
         })
       ),
