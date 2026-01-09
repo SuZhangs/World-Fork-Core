@@ -4,16 +4,16 @@ import swaggerUi from "@fastify/swagger-ui";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { nanoid } from "nanoid";
-import { createWorld, getWorld, getWorldWithBranches, listWorlds } from "../repo/worldRepo.js";
+import { createWorld, getWorld, getWorldWithBranches, listWorldsPaged } from "../repo/worldRepo.js";
 import { createBranch, getBranch, listBranches, updateBranchHead } from "../repo/branchRepo.js";
 import { createCommit, findCommonAncestor, getCommit, listCommitsByBranchHead } from "../repo/commitRepo.js";
 import {
   getBranchUnitStates,
   getCommitUnitSnapshots,
-  getUnitByBranch,
-  getUnitByCommit,
-  listUnitsByBranch,
-  listUnitsByCommit,
+  getUnitByBranchWithMeta,
+  getUnitByCommitWithMeta,
+  listUnitsPagedByBranch,
+  listUnitsPagedByCommit,
   upsertUnitState
 } from "../repo/unitRepo.js";
 import { diffUnits } from "../core/diff.js";
@@ -53,6 +53,10 @@ const worldSchema = z.object({
   createdAt: z.string().datetime()
 });
 
+const worldSummarySchema = worldSchema.extend({
+  updatedAt: z.string().datetime()
+});
+
 const branchSchema = z.object({
   id: z.string(),
   worldId: z.string(),
@@ -72,7 +76,9 @@ const unitSchema = z.object({
 
 const branchSummarySchema = z.object({
   name: z.string(),
+  worldId: z.string(),
   headCommitId: z.string().nullable().optional(),
+  createdAt: z.string().datetime(),
   updatedAt: z.string().datetime()
 });
 
@@ -85,25 +91,50 @@ const commitSchema = z.object({
   createdAt: z.string().datetime()
 });
 
+const commitSummarySchema = z.object({
+  id: z.string(),
+  message: z.string(),
+  parents: z.array(z.string()),
+  createdAt: z.string().datetime()
+});
+
+const commitDetailSchema = commitSummarySchema.extend({
+  worldId: z.string()
+});
+
+const unitSummarySchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  title: z.string(),
+  updatedAt: z.string().datetime().optional()
+});
+
+const unitFullSchema = unitSchema.extend({
+  updatedAt: z.string().datetime().optional()
+});
+
 const worldListResponseSchema = z.object({
-  worlds: z.array(worldSchema)
+  items: z.array(worldSummarySchema),
+  nextCursor: z.string().nullable()
 });
 
 const worldDetailResponseSchema = worldSchema.extend({
+  updatedAt: z.string().datetime(),
   branches: z.array(branchSummarySchema)
 });
 
 const branchListResponseSchema = z.object({
-  branches: z.array(branchSummarySchema)
+  items: z.array(branchSummarySchema)
 });
 
 const commitListResponseSchema = z.object({
-  commits: z.array(commitSchema),
-  nextCursor: z.string().nullable().optional()
+  items: z.array(commitSummarySchema),
+  nextCursor: z.string().nullable()
 });
 
 const unitListResponseSchema = z.object({
-  units: z.array(unitSchema)
+  items: z.array(z.union([unitSummarySchema, unitFullSchema])),
+  nextCursor: z.string().nullable()
 });
 
 const diffChangeSchema = z.object({
@@ -162,19 +193,29 @@ const diffQuerySchema = z.object({
   to: z.string()
 });
 
+const worldListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  cursor: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .transform((value) => (Array.isArray(value) ? value[0] : value))
+});
+
 const branchListQuerySchema = z.object({
   name: z.string().optional()
 });
 
 const commitListQuerySchema = z.object({
-  branchName: z.string().min(1),
-  limit: z.coerce.number().int().min(1).max(200).optional(),
+  branchName: z.string().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
   cursor: z.string().optional()
 });
 
 const unitListQuerySchema = z.object({
   ref: z.string().min(1),
-  type: z.string().optional()
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  cursor: z.string().optional(),
+  includeContent: z.coerce.boolean().optional()
 });
 
 const unitDetailQuerySchema = z.object({
@@ -197,6 +238,7 @@ const mergeBodySchema = z.object({
 });
 
 const worldParamsSchema = z.object({ worldId: z.string().min(1) });
+const commitParamsSchema = z.object({ worldId: z.string().min(1), commitId: z.string().min(1) });
 const unitParamsSchema = z.object({ worldId: z.string().min(1), unitId: z.string().min(1) });
 
 const examples = {
@@ -204,9 +246,24 @@ const examples = {
     id: "world_123",
     name: "Eldoria",
     description: "Shared universe for lore",
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z"
+  },
+  worldCreate: {
+    id: "world_123",
+    name: "Eldoria",
+    description: "Shared universe for lore",
     createdAt: "2024-01-01T00:00:00.000Z"
   },
   branch: {
+    id: "branch_123",
+    worldId: "world_123",
+    name: "feature/quests",
+    headCommitId: null,
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z"
+  },
+  branchCreate: {
     id: "branch_123",
     worldId: "world_123",
     name: "feature/quests",
@@ -234,6 +291,12 @@ const examples = {
     message: "Add new storyline",
     parentCommitId: null,
     parentCommitId2: null,
+    createdAt: "2024-01-01T00:00:00.000Z"
+  },
+  commitSummary: {
+    id: "commit_123",
+    message: "Add new storyline",
+    parents: [],
     createdAt: "2024-01-01T00:00:00.000Z"
   },
   diff: {
@@ -386,14 +449,34 @@ app.get(
     schema: {
       tags: ["Worlds"],
       summary: "List worlds",
+      querystring: withExample(toSchema(worldListQuerySchema), { limit: 20 }),
       response: {
-        200: withExample(toSchema(worldListResponseSchema), { worlds: [examples.world] })
+        200: withExample(toSchema(worldListResponseSchema), {
+          items: [examples.world],
+          nextCursor: null
+        }),
+        400: withExample(toSchema(errorSchema), examples.errorInvalid)
       }
     }
   },
   async (_request, reply) => {
-    const worlds = await listWorlds();
-    return reply.send({ worlds });
+    const query = worldListQuerySchema.safeParse(_request.query);
+    if (!query.success) {
+      return reply.status(400).send(errorResponse("INVALID_INPUT", "Invalid request"));
+    }
+
+    const limit = query.data.limit ?? 20;
+    const { items, nextCursor } = await listWorldsPaged(limit, query.data.cursor);
+    return reply.send({
+      items: items.map((world) => ({
+        id: world.id,
+        name: world.name,
+        description: world.description,
+        createdAt: world.createdAt.toISOString(),
+        updatedAt: world.createdAt.toISOString()
+      })),
+      nextCursor
+    });
   }
 );
 
@@ -410,7 +493,9 @@ app.get(
           branches: [
             {
               name: "main",
+              worldId: "world_123",
               headCommitId: "commit_123",
+              createdAt: "2024-01-01T00:00:00.000Z",
               updatedAt: "2024-01-02T00:00:00.000Z"
             }
           ]
@@ -433,7 +518,9 @@ app.get(
 
     const branches = world.branches.map((branch) => ({
       name: branch.name,
+      worldId: branch.worldId,
       headCommitId: branch.headCommitId ?? null,
+      createdAt: branch.createdAt.toISOString(),
       updatedAt: (branch.headCommit?.createdAt ?? branch.createdAt).toISOString()
     }));
 
@@ -442,6 +529,7 @@ app.get(
       name: world.name,
       description: world.description,
       createdAt: world.createdAt.toISOString(),
+      updatedAt: world.createdAt.toISOString(),
       branches
     });
   }
@@ -457,10 +545,12 @@ app.get(
       querystring: withExample(toSchema(branchListQuerySchema), { name: "main" }),
       response: {
         200: withExample(toSchema(branchListResponseSchema), {
-          branches: [
+          items: [
             {
               name: "main",
+              worldId: "world_123",
               headCommitId: "commit_123",
+              createdAt: "2024-01-01T00:00:00.000Z",
               updatedAt: "2024-01-02T00:00:00.000Z"
             }
           ]
@@ -484,9 +574,11 @@ app.get(
 
     const branches = await listBranches(world.id, query.data.name);
     return reply.send({
-      branches: branches.map((branch) => ({
+      items: branches.map((branch) => ({
         name: branch.name,
+        worldId: branch.worldId,
         headCommitId: branch.headCommitId ?? null,
+        createdAt: branch.createdAt.toISOString(),
         updatedAt: (branch.headCommit?.createdAt ?? branch.createdAt).toISOString()
       }))
     });
@@ -506,7 +598,7 @@ app.get(
       }),
       response: {
         200: withExample(toSchema(commitListResponseSchema), {
-          commits: [examples.commit],
+          items: [examples.commitSummary],
           nextCursor: null
         }),
         400: withExample(toSchema(errorSchema), examples.errorInvalid),
@@ -526,19 +618,70 @@ app.get(
       return reply.status(404).send(errorResponse("WORLD_NOT_FOUND", "World not found"));
     }
 
-    const branch = await getBranch(world.id, query.data.branchName);
+    const branchName = query.data.branchName ?? "main";
+    const branch = await getBranch(world.id, branchName);
     if (!branch) {
       return reply.status(404).send(errorResponse("BRANCH_NOT_FOUND", "Branch not found"));
     }
 
-    const limit = query.data.limit ?? 50;
+    const limit = query.data.limit ?? 20;
     const { commits, nextCursor } = await listCommitsByBranchHead(
       branch.headCommitId,
       limit,
       query.data.cursor
     );
 
-    return reply.send({ commits, nextCursor });
+    return reply.send({
+      items: commits.map((commit) => ({
+        id: commit.id,
+        message: commit.message,
+        parents: [commit.parentCommitId, commit.parentCommitId2].filter(
+          (parent): parent is string => Boolean(parent)
+        ),
+        createdAt: commit.createdAt.toISOString()
+      })),
+      nextCursor
+    });
+  }
+);
+
+app.get(
+  "/v1/worlds/:worldId/commits/:commitId",
+  {
+    schema: {
+      tags: ["Commits"],
+      summary: "Get a commit",
+      params: toSchema(commitParamsSchema),
+      response: {
+        200: withExample(toSchema(commitDetailSchema), {
+          ...examples.commitSummary,
+          worldId: "world_123"
+        }),
+        400: withExample(toSchema(errorSchema), examples.errorInvalid),
+        404: withExample(toSchema(errorSchema), examples.errorCommitNotFound)
+      }
+    }
+  },
+  async (request, reply) => {
+    const params = commitParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.status(400).send(errorResponse("INVALID_INPUT", "Invalid request"));
+    }
+
+    const commit = await getCommit(params.data.commitId);
+    if (!commit || commit.worldId !== params.data.worldId) {
+      return reply.status(404).send(errorResponse("COMMIT_NOT_FOUND", "Commit not found"));
+    }
+
+    return reply.send({
+      id: commit.id,
+      worldId: commit.worldId,
+      message: commit.message,
+      parents: [commit.parentCommitId, commit.parentCommitId2].filter(
+        (parent): parent is string => Boolean(parent)
+      ),
+      createdAt: commit.createdAt.toISOString()
+    });
   }
 );
 
@@ -551,10 +694,14 @@ app.get(
       params: toSchema(worldParamsSchema),
       querystring: withExample(toSchema(unitListQuerySchema), {
         ref: "branch:main",
-        type: "character"
+        limit: 20,
+        includeContent: false
       }),
       response: {
-        200: withExample(toSchema(unitListResponseSchema), { units: [examples.unit] }),
+        200: withExample(toSchema(unitListResponseSchema), {
+          items: [examples.unit],
+          nextCursor: null
+        }),
         400: withExample(toSchema(errorSchema), examples.errorInvalidRef),
         404: withExample(toSchema(errorSchema), examples.errorBranchNotFound)
       }
@@ -572,22 +719,51 @@ app.get(
       return reply.status(400).send(errorResponse("INVALID_REF", "Invalid ref"));
     }
 
+    const limit = query.data.limit ?? 20;
+    const includeContent = query.data.includeContent ?? false;
+
     if (ref.type === "branch") {
       const branch = await getBranch(params.data.worldId, ref.id);
       if (!branch) {
         return reply.status(404).send(errorResponse("BRANCH_NOT_FOUND", "Branch not found"));
       }
-      const units = await listUnitsByBranch(branch.id, query.data.type);
-      return reply.send({ units });
+      if (query.data.cursor) {
+        const cursorState = await prisma.unitState.findUnique({
+          where: { branchId_unitId: { branchId: branch.id, unitId: query.data.cursor } }
+        });
+        if (!cursorState) {
+          return reply.status(400).send(errorResponse("INVALID_INPUT", "Invalid request"));
+        }
+      }
+      const { items, nextCursor } = await listUnitsPagedByBranch(
+        branch.id,
+        limit,
+        query.data.cursor,
+        includeContent
+      );
+      return reply.send({ items, nextCursor });
     }
 
     const commit = await getCommit(ref.id);
     if (!commit || commit.worldId !== params.data.worldId) {
       return reply.status(404).send(errorResponse("COMMIT_NOT_FOUND", "Commit not found"));
     }
+    if (query.data.cursor) {
+      const cursorSnapshot = await prisma.unitSnapshot.findFirst({
+        where: { commitId: commit.id, unitId: query.data.cursor }
+      });
+      if (!cursorSnapshot) {
+        return reply.status(400).send(errorResponse("INVALID_INPUT", "Invalid request"));
+      }
+    }
 
-    const units = await listUnitsByCommit(commit.id, query.data.type);
-    return reply.send({ units });
+    const { items, nextCursor } = await listUnitsPagedByCommit(
+      commit.id,
+      limit,
+      query.data.cursor,
+      includeContent
+    );
+    return reply.send({ items, nextCursor });
   }
 );
 
@@ -602,7 +778,10 @@ app.get(
         ref: "branch:main"
       }),
       response: {
-        200: withExample(toSchema(unitSchema), examples.unit),
+        200: withExample(toSchema(unitFullSchema), {
+          ...examples.unit,
+          updatedAt: "2024-01-01T00:00:00.000Z"
+        }),
         400: withExample(toSchema(errorSchema), examples.errorInvalidRef),
         404: withExample(toSchema(errorSchema), examples.errorUnitNotFound)
       }
@@ -625,7 +804,7 @@ app.get(
       if (!branch) {
         return reply.status(404).send(errorResponse("BRANCH_NOT_FOUND", "Branch not found"));
       }
-      const unit = await getUnitByBranch(branch.id, params.data.unitId);
+      const unit = await getUnitByBranchWithMeta(branch.id, params.data.unitId);
       if (!unit) {
         return reply.status(404).send(errorResponse("UNIT_NOT_FOUND", "Unit not found"));
       }
@@ -636,7 +815,7 @@ app.get(
     if (!commit || commit.worldId !== params.data.worldId) {
       return reply.status(404).send(errorResponse("COMMIT_NOT_FOUND", "Commit not found"));
     }
-    const unit = await getUnitByCommit(commit.id, params.data.unitId);
+    const unit = await getUnitByCommitWithMeta(commit.id, params.data.unitId);
     if (!unit) {
       return reply.status(404).send(errorResponse("UNIT_NOT_FOUND", "Unit not found"));
     }
@@ -655,7 +834,7 @@ app.post(
         description: "Shared universe for lore"
       }),
       response: {
-        201: withExample(toSchema(worldSchema), examples.world),
+        201: withExample(toSchema(worldSchema), examples.worldCreate),
         400: withExample(toSchema(errorSchema), examples.errorInvalid)
       }
     }
@@ -683,7 +862,7 @@ app.post(
         sourceBranch: "main"
       }),
       response: {
-        201: withExample(toSchema(branchSchema), examples.branch),
+        201: withExample(toSchema(branchSchema), examples.branchCreate),
         400: withExample(toSchema(errorSchema), examples.errorInvalid),
         404: withExample(toSchema(errorSchema), examples.errorWorldNotFound)
       }

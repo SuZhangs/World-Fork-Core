@@ -106,3 +106,27 @@ export const listCommitsByBranchHead = async (
 
   return { commits, nextCursor };
 };
+
+export const listCommitsByWorld = async (worldId: string, limit: number, cursor?: string) => {
+  const commits = await prisma.commit.findMany({
+    where: {
+      worldId
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: limit + 1,
+    ...(cursor
+      ? {
+          cursor: { id: cursor },
+          skip: 1
+        }
+      : {})
+  });
+
+  let nextCursor: string | null = null;
+  if (commits.length > limit) {
+    const next = commits.pop();
+    nextCursor = next?.id ?? null;
+  }
+
+  return { commits, nextCursor };
+};
