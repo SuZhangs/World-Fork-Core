@@ -6,11 +6,19 @@
     "description": "WorldFork Core API for worlds, branches, units, commits, diff, and merge."
   },
   "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      }
+    },
     "schemas": {}
   },
   "paths": {
     "/openapi.json": {
       "get": {
+        "security": [],
         "responses": {
           "200": {
             "description": "Default Response"
@@ -52,6 +60,11 @@
             "in": "query",
             "name": "cursor",
             "required": false
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
           }
         ],
         "responses": {
@@ -159,6 +172,45 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "AUTH_REQUIRED",
+                      "message": "API key required"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -194,6 +246,11 @@
           },
           "required": true
         },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
         "responses": {
           "201": {
             "description": "Default Response",
@@ -271,6 +328,45 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "AUTH_REQUIRED",
+                      "message": "API key required"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -290,6 +386,11 @@
             "in": "path",
             "name": "worldId",
             "required": true
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
           }
         ],
         "responses": {
@@ -419,6 +520,45 @@
               }
             }
           },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "AUTH_REQUIRED",
+                      "message": "API key required"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Default Response",
             "content": {
@@ -484,6 +624,11 @@
             "in": "path",
             "name": "worldId",
             "required": true
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
           }
         ],
         "responses": {
@@ -586,6 +731,45 @@
               }
             }
           },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "AUTH_REQUIRED",
+                      "message": "API key required"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Default Response",
             "content": {
@@ -673,6 +857,11 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
         "responses": {
           "201": {
             "description": "Default Response",
@@ -750,6 +939,45 @@
                     "error": {
                       "code": "INVALID_INPUT",
                       "message": "Invalid request"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "AUTH_REQUIRED",
+                      "message": "API key required"
                     }
                   }
                 }
@@ -840,6 +1068,11 @@
             "in": "path",
             "name": "worldId",
             "required": true
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
           }
         ],
         "responses": {
@@ -945,6 +1178,45 @@
               }
             }
           },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "AUTH_REQUIRED",
+                      "message": "API key required"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Default Response",
             "content": {
@@ -1029,6 +1301,11 @@
             "in": "path",
             "name": "worldId",
             "required": true
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
           }
         ],
         "responses": {
@@ -1119,6 +1396,45 @@
               }
             }
           },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "AUTH_REQUIRED",
+                      "message": "API key required"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Default Response",
             "content": {
@@ -1185,6 +1501,11 @@
             "in": "path",
             "name": "commitId",
             "required": true
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
           }
         ],
         "responses": {
@@ -1267,6 +1588,45 @@
                     "error": {
                       "code": "INVALID_INPUT",
                       "message": "Invalid request"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "AUTH_REQUIRED",
+                      "message": "API key required"
                     }
                   }
                 }
@@ -1365,6 +1725,11 @@
             "in": "path",
             "name": "worldId",
             "required": true
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
           }
         ],
         "responses": {
@@ -1518,6 +1883,45 @@
               }
             }
           },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "AUTH_REQUIRED",
+                      "message": "API key required"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Default Response",
             "content": {
@@ -1648,6 +2052,11 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
         "responses": {
           "201": {
             "description": "Default Response",
@@ -1745,6 +2154,45 @@
               }
             }
           },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "AUTH_REQUIRED",
+                      "message": "API key required"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Default Response",
             "content": {
@@ -1820,6 +2268,11 @@
             "in": "path",
             "name": "unitId",
             "required": true
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
           }
         ],
         "responses": {
@@ -1924,6 +2377,45 @@
               }
             }
           },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "AUTH_REQUIRED",
+                      "message": "API key required"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Default Response",
             "content": {
@@ -1997,6 +2489,11 @@
             "in": "path",
             "name": "worldId",
             "required": true
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
           }
         ],
         "responses": {
@@ -2080,6 +2577,45 @@
                     "error": {
                       "code": "INVALID_REF",
                       "message": "Invalid ref"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "AUTH_REQUIRED",
+                      "message": "API key required"
                     }
                   }
                 }
@@ -2210,6 +2746,11 @@
             "in": "path",
             "name": "worldId",
             "required": true
+          }
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
           }
         ],
         "responses": {
@@ -2365,6 +2906,45 @@
                     "error": {
                       "code": "INVALID_INPUT",
                       "message": "Invalid request"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "AUTH_REQUIRED",
+                      "message": "API key required"
                     }
                   }
                 }

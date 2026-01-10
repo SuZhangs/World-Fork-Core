@@ -9,12 +9,27 @@ datasource db {
 
 model World {
   id          String   @id
+  tenantId    String
   name        String
   description String?
   createdAt   DateTime @default(now())
   branches    Branch[]
   commits     Commit[]
   units       Unit[]
+
+  @@index([tenantId])
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  keyHash   String
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+
+  @@index([tenantId])
+  @@unique([keyHash])
 }
 
 model Branch {

@@ -50,6 +50,7 @@ export type MergeApplyResponse = JsonResponseBody<
 
 export interface WorldForkClientOptions {
   baseUrl: string;
+  apiKey?: string;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -75,8 +76,12 @@ const unwrapWithStatus = async <R extends FetchResponse<any, any, any>>(
   return data as NonNullable<R["data"]>;
 };
 
-export const createClient = ({ baseUrl, fetch }: WorldForkClientOptions) => {
-  const client = createFetchClient<paths>({ baseUrl, fetch });
+export const createClient = ({ baseUrl, apiKey, fetch }: WorldForkClientOptions) => {
+  const client = createFetchClient<paths>({
+    baseUrl,
+    fetch,
+    headers: apiKey ? { "X-API-Key": apiKey } : undefined
+  });
 
   return {
     client,
