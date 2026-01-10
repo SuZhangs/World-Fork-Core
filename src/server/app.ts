@@ -22,6 +22,7 @@ import { prisma } from "../repo/prisma.js";
 import { UnitContent } from "../core/types.js";
 import { errorResponse } from "./errors.js";
 import { parseRef } from "./ref.js";
+import { registerAuth } from "./plugins/auth.js";
 
 const app = Fastify({
   logger: true,
@@ -45,6 +46,8 @@ const errorSchema = z.object({
     details: z.unknown().optional()
   })
 });
+
+const apiKeySecurity = [{ ApiKeyAuth: [] }];
 
 const worldSchema = z.object({
   id: z.string(),
@@ -369,8 +372,22 @@ const examples = {
       code: "INVALID_REF",
       message: "Invalid ref"
     }
+  },
+  errorAuthRequired: {
+    error: {
+      code: "AUTH_REQUIRED",
+      message: "API key required"
+    }
+  },
+  errorInvalidApiKey: {
+    error: {
+      code: "INVALID_API_KEY",
+      message: "Invalid API key"
+    }
   }
 };
+
+const authErrorResponseSchema = withExample(toSchema(errorSchema), examples.errorAuthRequired);
 
 await app.register(swagger, {
   openapi: {
@@ -380,7 +397,16 @@ await app.register(swagger, {
       version: "0.1.0",
       description: "WorldFork Core API for worlds, branches, units, commits, diff, and merge."
     },
-    servers: [{ url: "http://localhost:3000" }]
+    servers: [{ url: "http://localhost:3000" }],
+    components: {
+      securitySchemes: {
+        ApiKeyAuth: {
+          type: "apiKey",
+          in: "header",
+          name: "X-API-Key"
+        }
+      }
+    }
   }
 });
 
@@ -391,7 +417,17 @@ await app.register(swaggerUi, {
   }
 });
 
-app.get("/openapi.json", async (_request, reply) => reply.send(app.swagger()));
+await registerAuth(app);
+
+app.get(
+  "/openapi.json",
+  {
+    schema: {
+      security: []
+    }
+  },
+  async (_request, reply) => reply.send(app.swagger())
+);
 
 const loadUnitsByRef = async (worldId: string, ref: { type: "branch" | "commit"; id: string }) => {
   if (ref.type === "branch") {
@@ -449,13 +485,15 @@ app.get(
     schema: {
       tags: ["Worlds"],
       summary: "List worlds",
+      security: apiKeySecurity,
       querystring: withExample(toSchema(worldListQuerySchema), { limit: 20 }),
       response: {
         200: withExample(toSchema(worldListResponseSchema), {
           items: [examples.world],
           nextCursor: null
         }),
-        400: withExample(toSchema(errorSchema), examples.errorInvalid)
+        400: withExample(toSchema(errorSchema), examples.errorInvalid),
+        401: authErrorResponseSchema
       }
     }
   },
@@ -466,7 +504,7 @@ app.get(
     }
 
     const limit = query.data.limit ?? 20;
-    const { items, nextCursor } = await listWorldsPaged(limit, query.data.cursor);
+    const { items, nextCursor } = await listWorldsPaged(_request.tenantId, limit, query.data.cursor);
     return reply.send({
       items: items.map((world) => ({
         id: world.id,
@@ -486,6 +524,7 @@ app.get(
     schema: {
       tags: ["Worlds"],
       summary: "Get a world with branches",
+      security: apiKeySecurity,
       params: toSchema(worldParamsSchema),
       response: {
         200: withExample(toSchema(worldDetailResponseSchema), {
@@ -501,6 +540,7 @@ app.get(
           ]
         }),
         400: withExample(toSchema(errorSchema), examples.errorInvalid),
+        401: authErrorResponseSchema,
         404: withExample(toSchema(errorSchema), examples.errorWorldNotFound)
       }
     }
@@ -511,7 +551,7 @@ app.get(
       return reply.status(400).send(errorResponse("INVALID_INPUT", "Invalid request"));
     }
 
-    const world = await getWorldWithBranches(params.data.worldId);
+    const world = await getWorldWithBranches(params.data.worldId, request.tenantId);
     if (!world) {
       return reply.status(404).send(errorResponse("WORLD_NOT_FOUND", "World not found"));
     }
@@ -541,6 +581,7 @@ app.get(
     schema: {
       tags: ["Branches"],
       summary: "List branches",
+      security: apiKeySecurity,
       params: toSchema(worldParamsSchema),
       querystring: withExample(toSchema(branchListQuerySchema), { name: "main" }),
       response: {
@@ -556,6 +597,7 @@ app.get(
           ]
         }),
         400: withExample(toSchema(errorSchema), examples.errorInvalid),
+        401: authErrorResponseSchema,
         404: withExample(toSchema(errorSchema), examples.errorWorldNotFound)
       }
     }
@@ -567,7 +609,7 @@ app.get(
       return reply.status(400).send(errorResponse("INVALID_INPUT", "Invalid request"));
     }
 
-    const world = await getWorld(params.data.worldId);
+    const world = await getWorld(params.data.worldId, request.tenantId);
     if (!world) {
       return reply.status(404).send(errorResponse("WORLD_NOT_FOUND", "World not found"));
     }
@@ -591,6 +633,7 @@ app.get(
     schema: {
       tags: ["Commits"],
       summary: "List commits for a branch",
+      security: apiKeySecurity,
       params: toSchema(worldParamsSchema),
       querystring: withExample(toSchema(commitListQuerySchema), {
         branchName: "main",
@@ -602,6 +645,7 @@ app.get(
           nextCursor: null
         }),
         400: withExample(toSchema(errorSchema), examples.errorInvalid),
+        401: authErrorResponseSchema,
         404: withExample(toSchema(errorSchema), examples.errorBranchNotFound)
       }
     }
@@ -613,7 +657,7 @@ app.get(
       return reply.status(400).send(errorResponse("INVALID_INPUT", "Invalid request"));
     }
 
-    const world = await getWorld(params.data.worldId);
+    const world = await getWorld(params.data.worldId, request.tenantId);
     if (!world) {
       return reply.status(404).send(errorResponse("WORLD_NOT_FOUND", "World not found"));
     }
@@ -651,6 +695,7 @@ app.get(
     schema: {
       tags: ["Commits"],
       summary: "Get a commit",
+      security: apiKeySecurity,
       params: toSchema(commitParamsSchema),
       response: {
         200: withExample(toSchema(commitDetailSchema), {
@@ -658,6 +703,7 @@ app.get(
           worldId: "world_123"
         }),
         400: withExample(toSchema(errorSchema), examples.errorInvalid),
+        401: authErrorResponseSchema,
         404: withExample(toSchema(errorSchema), examples.errorCommitNotFound)
       }
     }
@@ -668,8 +714,13 @@ app.get(
       return reply.status(400).send(errorResponse("INVALID_INPUT", "Invalid request"));
     }
 
+    const world = await getWorld(params.data.worldId, request.tenantId);
+    if (!world) {
+      return reply.status(404).send(errorResponse("WORLD_NOT_FOUND", "World not found"));
+    }
+
     const commit = await getCommit(params.data.commitId);
-    if (!commit || commit.worldId !== params.data.worldId) {
+    if (!commit || commit.worldId !== world.id) {
       return reply.status(404).send(errorResponse("COMMIT_NOT_FOUND", "Commit not found"));
     }
 
@@ -691,6 +742,7 @@ app.get(
     schema: {
       tags: ["Units"],
       summary: "List units for a ref",
+      security: apiKeySecurity,
       params: toSchema(worldParamsSchema),
       querystring: withExample(toSchema(unitListQuerySchema), {
         ref: "branch:main",
@@ -703,6 +755,7 @@ app.get(
           nextCursor: null
         }),
         400: withExample(toSchema(errorSchema), examples.errorInvalidRef),
+        401: authErrorResponseSchema,
         404: withExample(toSchema(errorSchema), examples.errorBranchNotFound)
       }
     }
@@ -714,6 +767,11 @@ app.get(
       return reply.status(400).send(errorResponse("INVALID_INPUT", "Invalid request"));
     }
 
+    const world = await getWorld(params.data.worldId, request.tenantId);
+    if (!world) {
+      return reply.status(404).send(errorResponse("WORLD_NOT_FOUND", "World not found"));
+    }
+
     const ref = parseRef(query.data.ref);
     if (!ref) {
       return reply.status(400).send(errorResponse("INVALID_REF", "Invalid ref"));
@@ -723,7 +781,7 @@ app.get(
     const includeContent = query.data.includeContent ?? false;
 
     if (ref.type === "branch") {
-      const branch = await getBranch(params.data.worldId, ref.id);
+      const branch = await getBranch(world.id, ref.id);
       if (!branch) {
         return reply.status(404).send(errorResponse("BRANCH_NOT_FOUND", "Branch not found"));
       }
@@ -745,7 +803,7 @@ app.get(
     }
 
     const commit = await getCommit(ref.id);
-    if (!commit || commit.worldId !== params.data.worldId) {
+    if (!commit || commit.worldId !== world.id) {
       return reply.status(404).send(errorResponse("COMMIT_NOT_FOUND", "Commit not found"));
     }
     if (query.data.cursor) {
@@ -773,6 +831,7 @@ app.get(
     schema: {
       tags: ["Units"],
       summary: "Get a unit by ref",
+      security: apiKeySecurity,
       params: toSchema(unitParamsSchema),
       querystring: withExample(toSchema(unitDetailQuerySchema), {
         ref: "branch:main"
@@ -783,6 +842,7 @@ app.get(
           updatedAt: "2024-01-01T00:00:00.000Z"
         }),
         400: withExample(toSchema(errorSchema), examples.errorInvalidRef),
+        401: authErrorResponseSchema,
         404: withExample(toSchema(errorSchema), examples.errorUnitNotFound)
       }
     }
@@ -794,13 +854,18 @@ app.get(
       return reply.status(400).send(errorResponse("INVALID_INPUT", "Invalid request"));
     }
 
+    const world = await getWorld(params.data.worldId, request.tenantId);
+    if (!world) {
+      return reply.status(404).send(errorResponse("WORLD_NOT_FOUND", "World not found"));
+    }
+
     const ref = parseRef(query.data.ref);
     if (!ref) {
       return reply.status(400).send(errorResponse("INVALID_REF", "Invalid ref"));
     }
 
     if (ref.type === "branch") {
-      const branch = await getBranch(params.data.worldId, ref.id);
+      const branch = await getBranch(world.id, ref.id);
       if (!branch) {
         return reply.status(404).send(errorResponse("BRANCH_NOT_FOUND", "Branch not found"));
       }
@@ -812,7 +877,7 @@ app.get(
     }
 
     const commit = await getCommit(ref.id);
-    if (!commit || commit.worldId !== params.data.worldId) {
+    if (!commit || commit.worldId !== world.id) {
       return reply.status(404).send(errorResponse("COMMIT_NOT_FOUND", "Commit not found"));
     }
     const unit = await getUnitByCommitWithMeta(commit.id, params.data.unitId);
@@ -829,13 +894,15 @@ app.post(
     schema: {
       tags: ["Worlds"],
       summary: "Create a world",
+      security: apiKeySecurity,
       body: withExample(toSchema(createWorldBodySchema), {
         name: "Eldoria",
         description: "Shared universe for lore"
       }),
       response: {
         201: withExample(toSchema(worldSchema), examples.worldCreate),
-        400: withExample(toSchema(errorSchema), examples.errorInvalid)
+        400: withExample(toSchema(errorSchema), examples.errorInvalid),
+        401: authErrorResponseSchema
       }
     }
   },
@@ -845,7 +912,7 @@ app.post(
       return reply.status(400).send(errorResponse("INVALID_INPUT", "Invalid request", parsed.error.format()));
     }
 
-    const world = await createWorld(parsed.data.name, parsed.data.description);
+    const world = await createWorld(request.tenantId, parsed.data.name, parsed.data.description);
     return reply.status(201).send(world);
   }
 );
@@ -856,6 +923,7 @@ app.post(
     schema: {
       tags: ["Branches"],
       summary: "Create a branch",
+      security: apiKeySecurity,
       params: toSchema(worldParamsSchema),
       body: withExample(toSchema(createBranchBodySchema), {
         name: "feature/quests",
@@ -864,6 +932,7 @@ app.post(
       response: {
         201: withExample(toSchema(branchSchema), examples.branchCreate),
         400: withExample(toSchema(errorSchema), examples.errorInvalid),
+        401: authErrorResponseSchema,
         404: withExample(toSchema(errorSchema), examples.errorWorldNotFound)
       }
     }
@@ -880,7 +949,7 @@ app.post(
         .send(errorResponse("INVALID_INPUT", "Provide either sourceBranch or sourceCommitId"));
     }
 
-    const world = await getWorld(params.data.worldId);
+    const world = await getWorld(params.data.worldId, request.tenantId);
     if (!world) {
       return reply.status(404).send(errorResponse("WORLD_NOT_FOUND", "World not found"));
     }
@@ -908,6 +977,7 @@ app.post(
     schema: {
       tags: ["Units"],
       summary: "Create or update a unit",
+      security: apiKeySecurity,
       params: toSchema(worldParamsSchema),
       body: withExample(toSchema(createUnitBodySchema), {
         branchName: "main",
@@ -916,6 +986,7 @@ app.post(
       response: {
         201: withExample(toSchema(unitSchema), examples.unit),
         400: withExample(toSchema(errorSchema), examples.errorInvalid),
+        401: authErrorResponseSchema,
         404: withExample(toSchema(errorSchema), examples.errorWorldNotFound)
       }
     }
@@ -927,7 +998,7 @@ app.post(
       return reply.status(400).send(errorResponse("INVALID_INPUT", "Invalid request"));
     }
 
-    const world = await getWorld(params.data.worldId);
+    const world = await getWorld(params.data.worldId, request.tenantId);
     if (!world) {
       return reply.status(404).send(errorResponse("WORLD_NOT_FOUND", "World not found"));
     }
@@ -953,6 +1024,7 @@ app.post(
     schema: {
       tags: ["Commits"],
       summary: "Create a commit from a branch",
+      security: apiKeySecurity,
       params: toSchema(worldParamsSchema),
       body: withExample(toSchema(createCommitBodySchema), {
         branchName: "main",
@@ -961,6 +1033,7 @@ app.post(
       response: {
         201: withExample(toSchema(commitSchema), examples.commit),
         400: withExample(toSchema(errorSchema), examples.errorInvalid),
+        401: authErrorResponseSchema,
         404: withExample(toSchema(errorSchema), examples.errorWorldNotFound)
       }
     }
@@ -972,7 +1045,7 @@ app.post(
       return reply.status(400).send(errorResponse("INVALID_INPUT", "Invalid request"));
     }
 
-    const world = await getWorld(params.data.worldId);
+    const world = await getWorld(params.data.worldId, request.tenantId);
     if (!world) {
       return reply.status(404).send(errorResponse("WORLD_NOT_FOUND", "World not found"));
     }
@@ -1007,6 +1080,7 @@ app.get(
     schema: {
       tags: ["Diff"],
       summary: "Compare two refs",
+      security: apiKeySecurity,
       params: toSchema(worldParamsSchema),
       querystring: withExample(toSchema(diffQuerySchema), {
         from: "branch:main",
@@ -1015,6 +1089,7 @@ app.get(
       response: {
         200: withExample(toSchema(diffResponseSchema), examples.diff),
         400: withExample(toSchema(errorSchema), examples.errorInvalidRef),
+        401: authErrorResponseSchema,
         404: withExample(toSchema(errorSchema), examples.errorBranchNotFound)
       }
     }
@@ -1026,6 +1101,11 @@ app.get(
       return reply.status(400).send(errorResponse("INVALID_INPUT", "Invalid request"));
     }
 
+    const world = await getWorld(params.data.worldId, request.tenantId);
+    if (!world) {
+      return reply.status(404).send(errorResponse("WORLD_NOT_FOUND", "World not found"));
+    }
+
     const fromRef = parseRef(parsed.data.from);
     const toRef = parseRef(parsed.data.to);
     if (!fromRef || !toRef) {
@@ -1033,8 +1113,8 @@ app.get(
     }
 
     try {
-      const fromUnits = await loadUnitsByRef(params.data.worldId, fromRef);
-      const toUnits = await loadUnitsByRef(params.data.worldId, toRef);
+      const fromUnits = await loadUnitsByRef(world.id, fromRef);
+      const toUnits = await loadUnitsByRef(world.id, toRef);
       const changes = diffUnits(fromUnits, toUnits);
       return reply.send({ changes });
     } catch (error) {
@@ -1049,6 +1129,7 @@ app.post(
     schema: {
       tags: ["Merge"],
       summary: "Merge one branch into another",
+      security: apiKeySecurity,
       params: toSchema(worldParamsSchema),
       body: withExample(toSchema(mergeBodySchema), {
         oursBranch: "main",
@@ -1066,6 +1147,7 @@ app.post(
         200: withExample(toSchema(mergePreviewResponseSchema), examples.mergePreview),
         201: withExample(toSchema(mergeSuccessResponseSchema), examples.mergeSuccess),
         400: withExample(toSchema(errorSchema), examples.errorInvalid),
+        401: authErrorResponseSchema,
         404: withExample(toSchema(errorSchema), examples.errorBranchNotFound)
       }
     }
@@ -1077,7 +1159,7 @@ app.post(
       return reply.status(400).send(errorResponse("INVALID_INPUT", "Invalid request"));
     }
 
-    const world = await getWorld(params.data.worldId);
+    const world = await getWorld(params.data.worldId, request.tenantId);
     if (!world) {
       return reply.status(404).send(errorResponse("WORLD_NOT_FOUND", "World not found"));
     }

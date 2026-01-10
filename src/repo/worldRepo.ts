@@ -1,10 +1,11 @@
 import { nanoid } from "nanoid";
 import { prisma } from "./prisma.js";
 
-export const createWorld = async (name: string, description?: string | null) => {
+export const createWorld = async (tenantId: string, name: string, description?: string | null) => {
   const world = await prisma.world.create({
     data: {
       id: nanoid(),
+      tenantId,
       name,
       description
     }
@@ -21,15 +22,17 @@ export const createWorld = async (name: string, description?: string | null) => 
   return world;
 };
 
-export const getWorld = (worldId: string) => prisma.world.findUnique({ where: { id: worldId } });
+export const getWorld = (worldId: string, tenantId: string) =>
+  prisma.world.findFirst({ where: { id: worldId, tenantId } });
 
-export const listWorlds = () =>
+export const listWorlds = (tenantId: string) =>
   prisma.world.findMany({
+    where: { tenantId },
     orderBy: { createdAt: "desc" }
   });
 
-export const listWorldsPaged = async (limit: number, cursor?: string) => {
-  const where = cursor ? { id: { lt: cursor } } : {};
+export const listWorldsPaged = async (tenantId: string, limit: number, cursor?: string) => {
+  const where = cursor ? { id: { lt: cursor }, tenantId } : { tenantId };
   const worlds = await prisma.world.findMany({
     where,
     orderBy: { id: "desc" },
@@ -43,9 +46,9 @@ export const listWorldsPaged = async (limit: number, cursor?: string) => {
   return { items, nextCursor };
 };
 
-export const getWorldWithBranches = (worldId: string) =>
-  prisma.world.findUnique({
-    where: { id: worldId },
+export const getWorldWithBranches = (worldId: string, tenantId: string) =>
+  prisma.world.findFirst({
+    where: { id: worldId, tenantId },
     include: {
       branches: {
         include: {

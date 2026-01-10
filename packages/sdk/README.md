@@ -13,7 +13,10 @@ npm install @worldfork/sdk
 ```ts
 import { createClient } from "@worldfork/sdk";
 
-const client = createClient({ baseUrl: "http://localhost:3000" });
+const client = createClient({
+  baseUrl: "http://localhost:3000",
+  apiKey: process.env.WF_API_KEY
+});
 
 const world = await client.createWorld({
   name: "Demo World",
@@ -98,5 +101,5 @@ npm run build
 The smoke test expects a running WorldFork Core server:
 
 ```bash
-WORLDFORK_BASE_URL=http://localhost:3000 npm run smoke
+WORLDFORK_BASE_URL=http://localhost:3000 WF_API_KEY=wf_live_xxx npm run smoke
 ```
