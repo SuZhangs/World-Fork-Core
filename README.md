@@ -230,6 +230,25 @@ npm run gen
 npm run build
 ```
 
+### 发布（两种等价方式）
+
+方式一（进入目录）：
+
+```bash
+cd packages/sdk
+npm run gen
+npm run build
+npm publish --access public
+```
+
+方式二（workspace 命令）：
+
+```bash
+npm run -w @worldfork/sdk gen
+npm run -w @worldfork/sdk build
+npm publish -w @worldfork/sdk --access public
+```
+
 ### 发布（手动）
 
 ```bash
@@ -239,4 +258,8 @@ npm publish --access public
 ### 发布（GitHub Actions）
 
 1. 在 GitHub 仓库的 Secrets 中添加 `NPM_TOKEN`。
-2. 推送 tag（如 `sdk-v0.1.0`）或手动触发 workflow：`.github/workflows/publish-sdk.yml`。
+2. 推送 tag（如 `sdk-v0.1.2`）或手动触发 workflow：`.github/workflows/publish-sdk.yml`。
+
+### npm 包信息
+
+https://www.npmjs.com/package/@worldfork/sdk
