@@ -11,7 +11,7 @@
     "build": "tsc -p tsconfig.json",
     "openapi:export": "tsx scripts/export-openapi.ts",
     "openapi:check": "npm run openapi:export && (git diff --quiet openapi/openapi.json || (echo \"openapi/openapi.json 未同步，请运行 npm run openapi:export 并提交\" && exit 1))",
-    "openapi:lint": "openapi lint openapi/openapi.json",
+    "openapi:lint": "openapi validate openapi/openapi.json",
     "test": "vitest run",
     "prisma:migrate": "prisma migrate dev --name init",
     "key:create": "tsx scripts/create-api-key.ts",
@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.1",
-    "@redocly/openapi-cli": "^1.12.1",
+    "@redocly/openapi-cli": "^0.12.16",
     "prisma": "^5.19.1",
     "tsx": "^4.16.2",
     "typescript": "^5.6.3",

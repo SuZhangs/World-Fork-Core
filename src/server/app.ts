@@ -441,9 +441,21 @@ await app.register(swagger, {
     info: {
       title: "WorldFork Core API",
       version: "0.1.1",
-      description: "WorldFork Core API for worlds, branches, units, commits, diff, and merge."
+      description: "WorldFork Core API for worlds, branches, units, commits, diff, and merge.",
+      contact: {
+        name: "WorldFork Core",
+        email: "speroche@foxmail.com"
+      }
     },
     servers: [{ url: "http://localhost:3000" }],
+    tags: [
+      { name: "Worlds" },
+      { name: "Branches" },
+      { name: "Commits" },
+      { name: "Units" },
+      { name: "Diff" },
+      { name: "Merge" }
+    ],
     components: {
       securitySchemes: {
         ApiKeyAuth: {
