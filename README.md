@@ -76,6 +76,43 @@ WORLDFORK_AUTH=on npm run dev
 - **机器可读**：`http://localhost:3000/openapi.json`
 - **人可读**：`http://localhost:3000/docs`
 
+## 并发安全（乐观锁）
+
+为了避免并发提交覆盖分支 head，建议客户端按以下流程：
+
+1. 先读取分支 head：`GET /v1/worlds/:worldId/branches`（`headCommitId` 可能为 `null`）。
+2. 提交或合并时带上 `expectedHeadCommitId`。
+3. 若返回 `409 HEAD_CHANGED`，重新拉取最新 head 后再提交/合并。
+
+提交示例（带期望 head）：
+
+```bash
+HEAD=$(curl -s "http://localhost:3000/v1/worlds/$WORLD_ID/branches?name=main" \
+  -H "X-API-Key: $API_KEY" | jq -r '.items[0].headCommitId')
+
+curl -s -X POST http://localhost:3000/v1/worlds/$WORLD_ID/commits \
+  -H "X-API-Key: $API_KEY" \
+  -H 'content-type: application/json' \
+  -d '{"branchName":"main","message":"safe commit","expectedHeadCommitId":"'"$HEAD"'"}' | jq
+```
+
+合并 apply 示例（带期望 head）：
+
+```bash
+HEAD=$(curl -s "http://localhost:3000/v1/worlds/$WORLD_ID/branches?name=main" \
+  -H "X-API-Key: $API_KEY" | jq -r '.items[0].headCommitId')
+
+curl -s -X POST http://localhost:3000/v1/worlds/$WORLD_ID/merge \
+  -H "X-API-Key: $API_KEY" \
+  -H 'content-type: application/json' \
+  -d '{
+    "oursBranch":"main",
+    "theirsBranch":"alt",
+    "expectedHeadCommitId":"'"$HEAD"'",
+    "resolutions":[]
+  }' | jq
+```
+
 
 ## API 演示流程（可直接复制）
 

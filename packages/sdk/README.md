@@ -37,9 +37,13 @@ const unit = await client.upsertUnit(world.id, {
   }
 });
 
+const mainBranch = await client.listBranches(world.id, { name: "main" });
+const mainHead = mainBranch.items[0]?.headCommitId ?? null;
+
 await client.commit(world.id, {
   branchName: "main",
-  message: "Add Captain Vela"
+  message: "Add Captain Vela",
+  expectedHeadCommitId: mainHead
 });
 
 await client.upsertUnit(world.id, {
@@ -71,9 +75,13 @@ const preview = await client.mergePreview(world.id, {
 
 console.log("Merge preview:", preview);
 
+const refreshedMain = await client.listBranches(world.id, { name: "main" });
+const refreshedHead = refreshedMain.items[0]?.headCommitId ?? null;
+
 const merge = await client.mergeApply(world.id, {
   oursBranch: "main",
   theirsBranch: branch.name,
+  expectedHeadCommitId: refreshedHead,
   resolutions: (preview.conflicts ?? []).map((conflict) => ({
     unitId: conflict.unitId,
     path: conflict.path,
