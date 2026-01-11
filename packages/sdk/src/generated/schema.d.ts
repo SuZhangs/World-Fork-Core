@@ -561,6 +561,7 @@ export interface paths {
                     "application/json": {
                         branchName: string;
                         message: string;
+                        expectedHeadCommitId?: string | null;
                     };
                 };
             };
@@ -599,6 +600,21 @@ export interface paths {
                 };
                 /** @description Default Response */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1156,6 +1172,7 @@ export interface paths {
                     "application/json": {
                         oursBranch: string;
                         theirsBranch: string;
+                        expectedHeadCommitId?: string | null;
                         resolutions?: {
                             unitId: string;
                             path: string;
@@ -1228,6 +1245,21 @@ export interface paths {
                 };
                 /** @description Default Response */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };

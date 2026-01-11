@@ -5,8 +5,8 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { nanoid } from "nanoid";
 import { createWorld, getWorld, getWorldWithBranches, listWorldsPaged } from "../repo/worldRepo.js";
-import { createBranch, getBranch, listBranches, updateBranchHead } from "../repo/branchRepo.js";
-import { createCommit, findCommonAncestor, getCommit, listCommitsByBranchHead } from "../repo/commitRepo.js";
+import { createBranch, getBranch, listBranches } from "../repo/branchRepo.js";
+import { findCommonAncestor, getCommit, listCommitsByBranchHead } from "../repo/commitRepo.js";
 import {
   getBranchUnitStates,
   getCommitUnitSnapshots,
@@ -46,6 +46,9 @@ const errorSchema = z.object({
     details: z.unknown().optional()
   })
 });
+
+const isErrorResponse = (value: unknown): value is { error: { code: string } } =>
+  typeof value === "object" && value !== null && "error" in value;
 
 const apiKeySecurity = [{ ApiKeyAuth: [] }];
 
@@ -188,7 +191,8 @@ const createUnitBodySchema = z.object({
 
 const createCommitBodySchema = z.object({
   branchName: z.string().min(1),
-  message: z.string().min(1)
+  message: z.string().min(1),
+  expectedHeadCommitId: z.string().nullable().optional()
 });
 
 const diffQuerySchema = z.object({
@@ -228,6 +232,7 @@ const unitDetailQuerySchema = z.object({
 const mergeBodySchema = z.object({
   oursBranch: z.string().min(1),
   theirsBranch: z.string().min(1),
+  expectedHeadCommitId: z.string().nullable().optional(),
   resolutions: z
     .array(
       z.object({
@@ -373,6 +378,17 @@ const examples = {
       message: "Invalid ref"
     }
   },
+  errorHeadChanged: {
+    error: {
+      code: "HEAD_CHANGED",
+      message: "Branch head changed",
+      details: {
+        branchName: "main",
+        expected: "commit_123",
+        actual: "commit_456"
+      }
+    }
+  },
   errorAuthRequired: {
     error: {
       code: "AUTH_REQUIRED",
@@ -386,6 +402,13 @@ const examples = {
     }
   }
 };
+
+const headChangedError = (branchName: string, expected: string | null | undefined, actual: string | null) =>
+  errorResponse("HEAD_CHANGED", "Branch head changed", {
+    branchName,
+    expected: expected ?? null,
+    actual
+  });
 
 const authErrorResponseSchema = withExample(toSchema(errorSchema), examples.errorAuthRequired);
 
@@ -1033,6 +1056,7 @@ app.post(
       response: {
         201: withExample(toSchema(commitSchema), examples.commit),
         400: withExample(toSchema(errorSchema), examples.errorInvalid),
+        409: withExample(toSchema(errorSchema), examples.errorHeadChanged),
         401: authErrorResponseSchema,
         404: withExample(toSchema(errorSchema), examples.errorWorldNotFound)
       }
@@ -1055,22 +1079,70 @@ app.post(
       return reply.status(404).send(errorResponse("BRANCH_NOT_FOUND", "Branch not found"));
     }
 
-    const commit = await createCommit(world.id, parsed.data.message, branch.headCommitId ?? null);
-    const states = await prisma.unitState.findMany({ where: { branchId: branch.id } });
+    try {
+      const expectedHeadCommitId = parsed.data.expectedHeadCommitId;
+      const commit = await prisma.$transaction(async (tx) => {
+        let currentHeadCommitId = branch.headCommitId ?? null;
+        if (expectedHeadCommitId !== undefined) {
+          const currentBranch = await tx.branch.findUnique({ where: { id: branch.id } });
+          if (!currentBranch) {
+            throw errorResponse("BRANCH_NOT_FOUND", "Branch not found");
+          }
+          currentHeadCommitId = currentBranch.headCommitId ?? null;
+          if (expectedHeadCommitId !== currentHeadCommitId) {
+            throw headChangedError(branch.name, expectedHeadCommitId, currentHeadCommitId);
+          }
+        }
 
-    if (states.length > 0) {
-      await prisma.unitSnapshot.createMany({
-        data: states.map((state) => ({
-          id: nanoid(),
-          commitId: commit.id,
-          unitId: state.unitId,
-          contentJson: state.contentJson
-        }))
+        const nextCommit = await tx.commit.create({
+          data: {
+            id: nanoid(),
+            worldId: world.id,
+            message: parsed.data.message,
+            parentCommitId: currentHeadCommitId,
+            parentCommitId2: null
+          }
+        });
+
+        const states = await tx.unitState.findMany({ where: { branchId: branch.id } });
+        if (states.length > 0) {
+          await tx.unitSnapshot.createMany({
+            data: states.map((state) => ({
+              id: nanoid(),
+              commitId: nextCommit.id,
+              unitId: state.unitId,
+              contentJson: state.contentJson
+            }))
+          });
+        }
+
+        if (expectedHeadCommitId !== undefined) {
+          const updated = await tx.branch.updateMany({
+            where: { id: branch.id, headCommitId: currentHeadCommitId },
+            data: { headCommitId: nextCommit.id }
+          });
+          if (updated.count === 0) {
+            const latest = await tx.branch.findUnique({ where: { id: branch.id } });
+            throw headChangedError(branch.name, expectedHeadCommitId, latest?.headCommitId ?? null);
+          }
+        } else {
+          await tx.branch.update({ where: { id: branch.id }, data: { headCommitId: nextCommit.id } });
+        }
+
+        return nextCommit;
       });
+      return reply.status(201).send(commit);
+    } catch (error) {
+      if (isErrorResponse(error)) {
+        if (error.error.code === "HEAD_CHANGED") {
+          return reply.status(409).send(error);
+        }
+        if (error.error.code === "BRANCH_NOT_FOUND") {
+          return reply.status(404).send(error);
+        }
+      }
+      throw error;
     }
-
-    await updateBranchHead(branch.id, commit.id);
-    return reply.status(201).send(commit);
   }
 );
 
@@ -1147,6 +1219,7 @@ app.post(
         200: withExample(toSchema(mergePreviewResponseSchema), examples.mergePreview),
         201: withExample(toSchema(mergeSuccessResponseSchema), examples.mergeSuccess),
         400: withExample(toSchema(errorSchema), examples.errorInvalid),
+        409: withExample(toSchema(errorSchema), examples.errorHeadChanged),
         401: authErrorResponseSchema,
         404: withExample(toSchema(errorSchema), examples.errorBranchNotFound)
       }
@@ -1212,31 +1285,95 @@ app.post(
       }
     }
 
-    const mergeCommit = await createCommit(
-      world.id,
-      `Merge ${oursBranch.name} <- ${theirsBranch.name}`,
-      oursBranch.headCommitId ?? null,
-      theirsBranch.headCommitId ?? null
-    );
+    try {
+      const expectedHeadCommitId = parsed.data.expectedHeadCommitId;
+      const mergeCommit = await prisma.$transaction(async (tx) => {
+        let currentHeadCommitId = oursBranch.headCommitId ?? null;
+        if (expectedHeadCommitId !== undefined) {
+          const currentBranch = await tx.branch.findUnique({ where: { id: oursBranch.id } });
+          if (!currentBranch) {
+            throw errorResponse("BRANCH_NOT_FOUND", "Branch not found");
+          }
+          currentHeadCommitId = currentBranch.headCommitId ?? null;
+          if (expectedHeadCommitId !== currentHeadCommitId) {
+            throw headChangedError(oursBranch.name, expectedHeadCommitId, currentHeadCommitId);
+          }
+        }
 
-    const snapshotData = Object.values(resolvedUnits).map((unit) => ({
-      id: nanoid(),
-      commitId: mergeCommit.id,
-      unitId: unit.id,
-      contentJson: JSON.stringify(unit)
-    }));
+        const nextMergeCommit = await tx.commit.create({
+          data: {
+            id: nanoid(),
+            worldId: world.id,
+            message: `Merge ${oursBranch.name} <- ${theirsBranch.name}`,
+            parentCommitId: currentHeadCommitId,
+            parentCommitId2: theirsBranch.headCommitId ?? null
+          }
+        });
 
-    if (snapshotData.length > 0) {
-      await prisma.unitSnapshot.createMany({ data: snapshotData });
+        const snapshotData = Object.values(resolvedUnits).map((unit) => ({
+          id: nanoid(),
+          commitId: nextMergeCommit.id,
+          unitId: unit.id,
+          contentJson: JSON.stringify(unit)
+        }));
+
+        if (snapshotData.length > 0) {
+          await tx.unitSnapshot.createMany({ data: snapshotData });
+        }
+
+        for (const unit of Object.values(resolvedUnits)) {
+          const contentJson = JSON.stringify(unit);
+          const ensuredUnit = await tx.unit.upsert({
+            where: { id: unit.id },
+            update: {},
+            create: {
+              id: unit.id,
+              worldId: world.id
+            }
+          });
+
+          await tx.unitState.upsert({
+            where: { branchId_unitId: { branchId: oursBranch.id, unitId: ensuredUnit.id } },
+            create: {
+              id: nanoid(),
+              branchId: oursBranch.id,
+              unitId: ensuredUnit.id,
+              contentJson
+            },
+            update: {
+              contentJson
+            }
+          });
+        }
+
+        if (expectedHeadCommitId !== undefined) {
+          const updated = await tx.branch.updateMany({
+            where: { id: oursBranch.id, headCommitId: currentHeadCommitId },
+            data: { headCommitId: nextMergeCommit.id }
+          });
+          if (updated.count === 0) {
+            const latest = await tx.branch.findUnique({ where: { id: oursBranch.id } });
+            throw headChangedError(oursBranch.name, expectedHeadCommitId, latest?.headCommitId ?? null);
+          }
+        } else {
+          await tx.branch.update({ where: { id: oursBranch.id }, data: { headCommitId: nextMergeCommit.id } });
+        }
+
+        return nextMergeCommit;
+      });
+
+      return reply.status(201).send({ mergeCommitId: mergeCommit.id });
+    } catch (error) {
+      if (isErrorResponse(error)) {
+        if (error.error.code === "HEAD_CHANGED") {
+          return reply.status(409).send(error);
+        }
+        if (error.error.code === "BRANCH_NOT_FOUND") {
+          return reply.status(404).send(error);
+        }
+      }
+      throw error;
     }
-
-    for (const unit of Object.values(resolvedUnits)) {
-      await upsertUnitState(world.id, oursBranch.id, unit);
-    }
-
-    await updateBranchHead(oursBranch.id, mergeCommit.id);
-
-    return reply.status(201).send({ mergeCommitId: mergeCommit.id });
   }
 );
 

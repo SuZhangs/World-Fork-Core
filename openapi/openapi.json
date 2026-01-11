@@ -1276,6 +1276,10 @@
                   "message": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "expectedHeadCommitId": {
+                    "type": "string",
+                    "nullable": true
                   }
                 },
                 "required": [
@@ -1390,6 +1394,50 @@
                     "error": {
                       "code": "INVALID_INPUT",
                       "message": "Invalid request"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "HEAD_CHANGED",
+                      "message": "Branch head changed",
+                      "details": {
+                        "branchName": "main",
+                        "expected": "commit_123",
+                        "actual": "commit_456"
+                      }
                     }
                   }
                 }
@@ -2676,15 +2724,19 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "oursBranch": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "theirsBranch": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "resolutions": {
+                        "oursBranch": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "theirsBranch": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "expectedHeadCommitId": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "resolutions": {
                     "type": "array",
                     "items": {
                       "type": "object",
@@ -2906,6 +2958,50 @@
                     "error": {
                       "code": "INVALID_INPUT",
                       "message": "Invalid request"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "HEAD_CHANGED",
+                      "message": "Branch head changed",
+                      "details": {
+                        "branchName": "main",
+                        "expected": "commit_123",
+                        "actual": "commit_456"
+                      }
                     }
                   }
                 }
