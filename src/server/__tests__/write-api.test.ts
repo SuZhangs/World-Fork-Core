@@ -203,4 +203,182 @@ describe.sequential("write APIs", () => {
     expect(mergeBody.error.details.expected).toBe(baseCommitBody.id);
     expect(mergeBody.error.details.actual).toBe(newHeadCommitBody.id);
   });
+
+  it("returns conflict context with unit summary and commit refs", async () => {
+    const world = await createWorld("Merge Preview Context World");
+    const unit = await context.app!.inject({
+      method: "POST",
+      url: `/v1/worlds/${world.id}/units`,
+      payload: { branchName: "main", unit: { type: "npc", title: "Guard", fields: { hp: 10 } } },
+      headers: { "x-api-key": context.apiKey }
+    });
+    const unitBody = jsonBody(unit);
+
+    const baseCommit = await context.app!.inject({
+      method: "POST",
+      url: `/v1/worlds/${world.id}/commits`,
+      payload: { branchName: "main", message: "Base" },
+      headers: { "x-api-key": context.apiKey }
+    });
+    const baseCommitBody = jsonBody(baseCommit);
+
+    await context.app!.inject({
+      method: "POST",
+      url: `/v1/worlds/${world.id}/branches`,
+      payload: { name: "feature", sourceBranch: "main" },
+      headers: { "x-api-key": context.apiKey }
+    });
+
+    const mainUpdate = await context.app!.inject({
+      method: "POST",
+      url: `/v1/worlds/${world.id}/units`,
+      payload: {
+        branchName: "main",
+        unit: { id: unitBody.id, type: "npc", title: "Guard (Main)", fields: { hp: 12 } }
+      },
+      headers: { "x-api-key": context.apiKey }
+    });
+    const mainUnitBody = jsonBody(mainUpdate);
+
+    const mainCommit = await context.app!.inject({
+      method: "POST",
+      url: `/v1/worlds/${world.id}/commits`,
+      payload: { branchName: "main", message: "Main update" },
+      headers: { "x-api-key": context.apiKey }
+    });
+    const mainCommitBody = jsonBody(mainCommit);
+
+    await context.app!.inject({
+      method: "POST",
+      url: `/v1/worlds/${world.id}/units`,
+      payload: {
+        branchName: "feature",
+        unit: { id: unitBody.id, type: "npc", title: "Guard (Feature)", fields: { hp: 8 } }
+      },
+      headers: { "x-api-key": context.apiKey }
+    });
+
+    const featureCommit = await context.app!.inject({
+      method: "POST",
+      url: `/v1/worlds/${world.id}/commits`,
+      payload: { branchName: "feature", message: "Feature update" },
+      headers: { "x-api-key": context.apiKey }
+    });
+    const featureCommitBody = jsonBody(featureCommit);
+
+    const mergePreview = await context.app!.inject({
+      method: "POST",
+      url: `/v1/worlds/${world.id}/merge`,
+      payload: {
+        oursBranch: "main",
+        theirsBranch: "feature"
+      },
+      headers: { "x-api-key": context.apiKey }
+    });
+
+    expect(mergePreview.statusCode).toBe(200);
+    const previewBody = jsonBody(mergePreview);
+    expect(previewBody.conflicts.length).toBeGreaterThan(0);
+    const conflict = previewBody.conflicts[0];
+
+    expect(conflict.unit).toEqual({
+      id: unitBody.id,
+      type: "npc",
+      title: mainUnitBody.title
+    });
+    expect(conflict.refContext).toEqual({
+      baseCommitId: baseCommitBody.id,
+      oursCommitId: mainCommitBody.id,
+      theirsCommitId: featureCommitBody.id
+    });
+    expect(conflict.pathTokens).toEqual(expect.arrayContaining(["title"]));
+  });
+
+  it("applies merge resolutions with JSON Pointer escaped paths", async () => {
+    const world = await createWorld("Merge Pointer World");
+    const unit = await context.app!.inject({
+      method: "POST",
+      url: `/v1/worlds/${world.id}/units`,
+      payload: {
+        branchName: "main",
+        unit: { type: "npc", title: "Guard", fields: { "a/b": 1, "x~y": 2 } }
+      },
+      headers: { "x-api-key": context.apiKey }
+    });
+    const unitBody = jsonBody(unit);
+
+    await context.app!.inject({
+      method: "POST",
+      url: `/v1/worlds/${world.id}/commits`,
+      payload: { branchName: "main", message: "Base" },
+      headers: { "x-api-key": context.apiKey }
+    });
+
+    await context.app!.inject({
+      method: "POST",
+      url: `/v1/worlds/${world.id}/branches`,
+      payload: { name: "feature", sourceBranch: "main" },
+      headers: { "x-api-key": context.apiKey }
+    });
+
+    await context.app!.inject({
+      method: "POST",
+      url: `/v1/worlds/${world.id}/units`,
+      payload: {
+        branchName: "main",
+        unit: { id: unitBody.id, type: "npc", title: "Guard", fields: { "a/b": 3, "x~y": 2 } }
+      },
+      headers: { "x-api-key": context.apiKey }
+    });
+    await context.app!.inject({
+      method: "POST",
+      url: `/v1/worlds/${world.id}/commits`,
+      payload: { branchName: "main", message: "Main update" },
+      headers: { "x-api-key": context.apiKey }
+    });
+
+    await context.app!.inject({
+      method: "POST",
+      url: `/v1/worlds/${world.id}/units`,
+      payload: {
+        branchName: "feature",
+        unit: { id: unitBody.id, type: "npc", title: "Guard", fields: { "a/b": 4, "x~y": 2 } }
+      },
+      headers: { "x-api-key": context.apiKey }
+    });
+    await context.app!.inject({
+      method: "POST",
+      url: `/v1/worlds/${world.id}/commits`,
+      payload: { branchName: "feature", message: "Feature update" },
+      headers: { "x-api-key": context.apiKey }
+    });
+
+    const mergeApply = await context.app!.inject({
+      method: "POST",
+      url: `/v1/worlds/${world.id}/merge`,
+      payload: {
+        oursBranch: "main",
+        theirsBranch: "feature",
+        resolutions: [
+          {
+            unitId: unitBody.id,
+            path: "/fields/a~1b",
+            choice: "theirs"
+          }
+        ]
+      },
+      headers: { "x-api-key": context.apiKey }
+    });
+
+    expect(mergeApply.statusCode).toBe(201);
+
+    const updatedUnit = await context.app!.inject({
+      method: "GET",
+      url: `/v1/worlds/${world.id}/units/${unitBody.id}?ref=branch:main`,
+      headers: { "x-api-key": context.apiKey }
+    });
+    const updatedUnitBody = jsonBody(updatedUnit);
+    expect(updatedUnitBody.fields["a/b"]).toBe(4);
+    expect(updatedUnitBody.fields["x~y"]).toBe(2);
+  });
 });

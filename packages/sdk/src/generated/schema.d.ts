@@ -614,7 +614,7 @@ export interface paths {
                     };
                 };
                 /** @description Default Response */
-                409: {
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -629,7 +629,7 @@ export interface paths {
                     };
                 };
                 /** @description Default Response */
-                404: {
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1197,6 +1197,17 @@ export interface paths {
                                 base?: unknown;
                                 ours?: unknown;
                                 theirs?: unknown;
+                                unit: {
+                                    id: string;
+                                    type: string;
+                                    title: string;
+                                };
+                                refContext: {
+                                    baseCommitId: string | null;
+                                    oursCommitId: string | null;
+                                    theirsCommitId: string | null;
+                                };
+                                pathTokens?: string[];
                             }[];
                             previewMergedUnits: {
                                 [key: string]: {
@@ -1259,7 +1270,7 @@ export interface paths {
                     };
                 };
                 /** @description Default Response */
-                409: {
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1274,7 +1285,7 @@ export interface paths {
                     };
                 };
                 /** @description Default Response */
-                404: {
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };

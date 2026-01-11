@@ -1,4 +1,5 @@
 import { MergeConflict, MergeResult, UnitContent } from "./types.js";
+import { toPointer } from "./jsonPointer.js";
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -24,8 +25,7 @@ const isEqual = (a: unknown, b: unknown): boolean => {
   return false;
 };
 
-const joinPath = (base: string, key: string | number): string =>
-  base === "" ? `/${String(key)}` : `${base}/${String(key)}`;
+const joinPath = (base: string[], key: string | number): string[] => [...base, String(key)];
 
 type MergeNodeResult = {
   value: unknown;
@@ -36,7 +36,7 @@ const mergeValues = (
   base: unknown,
   ours: unknown,
   theirs: unknown,
-  path: string,
+  path: string[],
   unitId: string
 ): MergeNodeResult => {
   if (isEqual(ours, theirs)) {
@@ -82,7 +82,7 @@ const mergeValues = (
     conflicts: [
       {
         unitId,
-        path,
+        path: toPointer(path),
         base,
         ours,
         theirs
@@ -109,7 +109,7 @@ export const mergeUnits = (
     const ours = ourUnits[unitId];
     const theirs = theirUnits[unitId];
 
-    const result = mergeValues(base, ours, theirs, "", unitId);
+    const result = mergeValues(base, ours, theirs, [], unitId);
     if (result.value !== undefined) {
       mergedUnits[unitId] = result.value as UnitContent;
     }

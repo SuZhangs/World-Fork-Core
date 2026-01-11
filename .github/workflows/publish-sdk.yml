@@ -1,16 +1,15 @@
-name: Publish SDK
+name: Release
 
 on:
-  workflow_dispatch:
   push:
     tags:
-      - "sdk-v*"
+      - "v*"
 
 jobs:
-  publish:
+  release:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,8 +23,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Export OpenAPI
-        run: npm run openapi:export
+      - name: Export OpenAPI and check
+        run: npm run openapi:check
+
+      - name: Lint OpenAPI
+        run: npm run openapi:lint
 
       - name: Generate SDK types
         run: npm --workspace packages/sdk run gen
@@ -33,7 +35,27 @@ jobs:
       - name: Build SDK
         run: npm --workspace packages/sdk run build
 
+      - name: Run tests
+        run: npm test
+
+      - name: Prepare release notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk "/^## \\[$VERSION\\]/ {flag=1; next} /^## \\[/ {if (flag) exit} flag {print}" CHANGELOG.md > release-notes.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.txt
+
       - name: Publish SDK
+        if: env.NPM_TOKEN != ''
         run: npm publish --workspace packages/sdk --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Skip publish (no NPM_TOKEN)
+        if: env.NPM_TOKEN == ''
+        run: echo "NPM_TOKEN not set; skipping npm publish."
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -44,6 +44,17 @@ export type MergeConflict = {
   base: unknown;
   ours: unknown;
   theirs: unknown;
+  unit?: {
+    id: string;
+    type: string;
+    title: string;
+  };
+  refContext?: {
+    baseCommitId: string | null;
+    oursCommitId: string | null;
+    theirsCommitId: string | null;
+  };
+  pathTokens?: string[];
 };
 
 export type MergeResult = {
