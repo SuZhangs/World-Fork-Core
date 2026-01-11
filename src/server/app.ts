@@ -53,6 +53,16 @@ const isErrorResponse = (value: unknown): value is { error: { code: string } } =
 
 const apiKeySecurity = [{ ApiKeyAuth: [] }];
 
+app.setErrorHandler((error, _request, reply) => {
+  if ("validation" in error) {
+    return reply.status(400).send(errorResponse("INVALID_INPUT", "Invalid request", error.validation));
+  }
+  if (isErrorResponse(error)) {
+    return reply.send(error);
+  }
+  return reply.send(error);
+});
+
 const worldSchema = z.object({
   id: z.string(),
   name: z.string(),
