@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Export OpenAPI and check
+        run: npm run openapi:check
+
+      - name: Lint OpenAPI
+        run: npm run openapi:lint
+
+      - name: Generate SDK types
+        run: npm --workspace packages/sdk run gen
+
+      - name: Build SDK
+        run: npm --workspace packages/sdk run build
+
+      - name: Run tests
+        run: npm test

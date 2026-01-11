@@ -1,6 +1,6 @@
 {
   "name": "worldfork-core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -10,6 +10,8 @@
     "dev": "tsx watch src/server/index.ts",
     "build": "tsc -p tsconfig.json",
     "openapi:export": "tsx scripts/export-openapi.ts",
+    "openapi:check": "npm run openapi:export && (git diff --quiet openapi/openapi.json || (echo \"openapi/openapi.json 未同步，请运行 npm run openapi:export 并提交\" && exit 1))",
+    "openapi:lint": "openapi lint openapi/openapi.json",
     "test": "vitest run",
     "prisma:migrate": "prisma migrate dev --name init",
     "key:create": "tsx scripts/create-api-key.ts",
@@ -19,7 +21,7 @@
     "@fastify/swagger": "^8.15.0",
     "@fastify/swagger-ui": "^3.1.0",
     "@prisma/client": "^5.19.1",
-    "@worldfork/sdk": "^0.1.0",
+    "@worldfork/sdk": "^0.1.1",
     "fastify": "^4.28.1",
     "nanoid": "^5.0.7",
     "zod": "^3.23.8",
@@ -27,6 +29,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.1",
+    "@redocly/openapi-cli": "^1.12.1",
     "prisma": "^5.19.1",
     "tsx": "^4.16.2",
     "typescript": "^5.6.3",

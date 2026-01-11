@@ -20,6 +20,7 @@ import { diffUnits } from "../core/diff.js";
 import { mergeUnits } from "../core/merge.js";
 import { prisma } from "../repo/prisma.js";
 import { UnitContent } from "../core/types.js";
+import { fromPointer } from "../core/jsonPointer.js";
 import { errorResponse } from "./errors.js";
 import { parseRef } from "./ref.js";
 import { registerAuth } from "./plugins/auth.js";
@@ -155,7 +156,18 @@ const mergeConflictSchema = z.object({
   path: z.string(),
   base: z.unknown(),
   ours: z.unknown(),
-  theirs: z.unknown()
+  theirs: z.unknown(),
+  unit: z.object({
+    id: z.string(),
+    type: z.string(),
+    title: z.string()
+  }),
+  refContext: z.object({
+    baseCommitId: z.string().nullable(),
+    oursCommitId: z.string().nullable(),
+    theirsCommitId: z.string().nullable()
+  }),
+  pathTokens: z.array(z.string()).optional()
 });
 
 const diffResponseSchema = z.object({
@@ -324,7 +336,18 @@ const examples = {
         path: "/fields/role",
         base: "Explorer",
         ours: "Scout",
-        theirs: "Navigator"
+        theirs: "Navigator",
+        unit: {
+          id: "unit_123",
+          type: "character",
+          title: "Captain Vela"
+        },
+        refContext: {
+          baseCommitId: "commit_base_123",
+          oursCommitId: "commit_ours_123",
+          theirsCommitId: "commit_theirs_123"
+        },
+        pathTokens: ["fields", "role"]
       }
     ],
     previewMergedUnits: {
@@ -417,7 +440,7 @@ await app.register(swagger, {
     openapi: "3.0.3",
     info: {
       title: "WorldFork Core API",
-      version: "0.1.0",
+      version: "0.1.1",
       description: "WorldFork Core API for worlds, branches, units, commits, diff, and merge."
     },
     servers: [{ url: "http://localhost:3000" }],
@@ -467,21 +490,34 @@ const loadUnitsByRef = async (worldId: string, ref: { type: "branch" | "commit";
   return getCommitUnitSnapshots(ref.id);
 };
 
-const setValueAtPath = (target: Record<string, unknown>, path: string, value: unknown) => {
-  if (path === "") {
-    return value as Record<string, unknown>;
+const containsPointerEscapes = (path: string) => path.includes("~0") || path.includes("~1");
+
+const parsePointerTokens = (path: string): string[] | null => {
+  try {
+    return fromPointer(path);
+  } catch {
+    return null;
   }
-  const parts = path.replace(/^\//, "").split("/");
-  let current: Record<string, unknown> = target;
-  for (let i = 0; i < parts.length - 1; i += 1) {
-    const key = parts[i];
-    if (current[key] === undefined || typeof current[key] !== "object" || current[key] === null) {
-      current[key] = {};
+};
+
+const legacySplitTokens = (path: string): string[] =>
+  path === "" ? [] : path.replace(/^\//, "").split("/");
+
+const isArrayIndex = (token: string) => token !== "" && String(Number(token)) === token;
+
+const getValueAtTokens = (target: unknown, tokens: string[]): unknown => {
+  let current: unknown = target;
+  for (const token of tokens) {
+    if (current === null || typeof current !== "object") {
+      return undefined;
     }
-    current = current[key] as Record<string, unknown>;
+    if (Array.isArray(current) && isArrayIndex(token)) {
+      current = current[Number(token)];
+    } else {
+      current = (current as Record<string, unknown>)[token];
+    }
   }
-  current[parts[parts.length - 1]] = value as unknown;
-  return target;
+  return current;
 };
 
 const getValueAtPath = (target: Record<string, unknown> | undefined, path: string) => {
@@ -491,15 +527,57 @@ const getValueAtPath = (target: Record<string, unknown> | undefined, path: strin
   if (path === "") {
     return target;
   }
-  const parts = path.replace(/^\//, "").split("/");
-  let current: unknown = target;
-  for (const part of parts) {
-    if (current === null || typeof current !== "object") {
-      return undefined;
+  const pointerTokens = parsePointerTokens(path);
+  if (pointerTokens) {
+    const value = getValueAtTokens(target, pointerTokens);
+    if (value !== undefined || containsPointerEscapes(path)) {
+      return value;
     }
-    current = (current as Record<string, unknown>)[part];
   }
-  return current;
+  return getValueAtTokens(target, legacySplitTokens(path));
+};
+
+const setValueAtTokens = (target: Record<string, unknown>, tokens: string[], value: unknown) => {
+  if (tokens.length === 0) {
+    return value as Record<string, unknown>;
+  }
+  let current: Record<string, unknown> | unknown[] = target;
+  for (let i = 0; i < tokens.length - 1; i += 1) {
+    const token = tokens[i];
+    const nextToken = tokens[i + 1];
+    if (Array.isArray(current) && isArrayIndex(token)) {
+      const index = Number(token);
+      if (
+        current[index] === undefined ||
+        current[index] === null ||
+        typeof current[index] !== "object"
+      ) {
+        current[index] = isArrayIndex(nextToken) ? [] : {};
+      }
+      current = current[index] as Record<string, unknown> | unknown[];
+      continue;
+    }
+    const record = current as Record<string, unknown>;
+    if (record[token] === undefined || record[token] === null || typeof record[token] !== "object") {
+      record[token] = isArrayIndex(nextToken) ? [] : {};
+    }
+    current = record[token] as Record<string, unknown> | unknown[];
+  }
+  const finalToken = tokens[tokens.length - 1];
+  if (Array.isArray(current) && isArrayIndex(finalToken)) {
+    current[Number(finalToken)] = value;
+  } else {
+    (current as Record<string, unknown>)[finalToken] = value;
+  }
+  return target;
+};
+
+const setValueAtPath = (target: Record<string, unknown>, path: string, value: unknown) => {
+  const pointerTokens = parsePointerTokens(path);
+  if (pointerTokens) {
+    return setValueAtTokens(target, pointerTokens, value);
+  }
+  return setValueAtTokens(target, legacySplitTokens(path), value);
 };
 
 app.get(
@@ -1254,8 +1332,27 @@ app.post(
 
     const mergeResult = mergeUnits(baseUnits, oursUnits, theirsUnits);
 
-    if (mergeResult.conflicts.length > 0 && !parsed.data.resolutions) {
-      return reply.send({ conflicts: mergeResult.conflicts, previewMergedUnits: mergeResult.mergedUnits });
+    const enrichedConflicts = mergeResult.conflicts.map((conflict) => {
+      const unit =
+        oursUnits[conflict.unitId] ?? theirsUnits[conflict.unitId] ?? baseUnits[conflict.unitId];
+      return {
+        ...conflict,
+        unit: {
+          id: unit?.id ?? conflict.unitId,
+          type: unit?.type ?? "unknown",
+          title: unit?.title ?? "unknown"
+        },
+        refContext: {
+          baseCommitId,
+          oursCommitId: oursBranch.headCommitId ?? null,
+          theirsCommitId: theirsBranch.headCommitId ?? null
+        },
+        pathTokens: fromPointer(conflict.path)
+      };
+    });
+
+    if (enrichedConflicts.length > 0 && !parsed.data.resolutions) {
+      return reply.send({ conflicts: enrichedConflicts, previewMergedUnits: mergeResult.mergedUnits });
     }
 
     let resolvedUnits = { ...mergeResult.mergedUnits };

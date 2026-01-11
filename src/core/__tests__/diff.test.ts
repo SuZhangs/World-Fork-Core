@@ -27,4 +27,29 @@ describe("diffUnits", () => {
 
     expect(paths).toEqual(["/fields/hp", "/fields/stats/str", "/title"].sort());
   });
+
+  it("escapes tokens with slashes and tildes", () => {
+    const base: Record<string, UnitContent> = {
+      unitA: {
+        id: "unitA",
+        type: "npc",
+        title: "Old",
+        fields: { "a/b": 1, "x~y": 2 }
+      }
+    };
+
+    const next: Record<string, UnitContent> = {
+      unitA: {
+        id: "unitA",
+        type: "npc",
+        title: "Old",
+        fields: { "a/b": 2, "x~y": 3 }
+      }
+    };
+
+    const changes = diffUnits(base, next);
+    const paths = changes.map((change) => change.path);
+
+    expect(paths).toEqual(expect.arrayContaining(["/fields/a~1b", "/fields/x~0y"]));
+  });
 });

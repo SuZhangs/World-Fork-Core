@@ -6,7 +6,7 @@ WorldFork Core 是一个最小闭环原型：建世界 → 写 Unit → 提交 �
 
 - **快照存储**：每次提交都会把当前分支的全部 Unit 状态写入 `UnitSnapshot`，保证提交不可变、可重复读取。
 - **工作区**：分支维护 `UnitState` 作为当前工作区，提交时从 `UnitState` 生成快照。
-- **Diff**：字段级结构对比，输出 JSON Pointer 风格 `path`。
+- **Diff**：字段级结构对比，输出标准 JSON Pointer（RFC 6901）`path`（`~` → `~0`，`/` → `~1`）。
 - **Merge**：三方合并（base/ours/theirs）。
   - 若 `ours == base`，采用 `theirs`；若 `theirs == base`，采用 `ours`。
   - 其它情况视为冲突，返回 `conflicts`。
@@ -75,6 +75,14 @@ WORLDFORK_AUTH=on npm run dev
 
 - **机器可读**：`http://localhost:3000/openapi.json`
 - **人可读**：`http://localhost:3000/docs`
+
+## 契约边界与兼容性承诺
+
+- `/openapi.json` 是权威契约，SDK 类型由它生成。
+- 列表接口返回 `{ items, nextCursor }` 结构为稳定承诺。
+- 错误返回中的 `error.code` 为稳定承诺。
+- `diff`/`merge` 输出的 `path` 使用标准 JSON Pointer（RFC 6901）；旧的非标准路径将逐步废弃。
+- 若出现 Breaking change，将通过 `/v2` 路由或主版本号升级。
 
 ## 并发安全（乐观锁）
 

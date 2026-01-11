@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "WorldFork Core API",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "WorldFork Core API for worlds, branches, units, commits, diff, and merge."
   },
   "components": {
@@ -1400,50 +1400,6 @@
               }
             }
           },
-          "409": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "details": {}
-                      },
-                      "required": [
-                        "code",
-                        "message"
-                      ],
-                      "additionalProperties": false
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ],
-                  "additionalProperties": false,
-                  "example": {
-                    "error": {
-                      "code": "HEAD_CHANGED",
-                      "message": "Branch head changed",
-                      "details": {
-                        "branchName": "main",
-                        "expected": "commit_123",
-                        "actual": "commit_456"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
           "401": {
             "description": "Default Response",
             "content": {
@@ -1516,6 +1472,50 @@
                     "error": {
                       "code": "WORLD_NOT_FOUND",
                       "message": "World not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "HEAD_CHANGED",
+                      "message": "Branch head changed",
+                      "details": {
+                        "branchName": "main",
+                        "expected": "commit_123",
+                        "actual": "commit_456"
+                      }
                     }
                   }
                 }
@@ -2724,19 +2724,19 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                        "oursBranch": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "theirsBranch": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "expectedHeadCommitId": {
-                          "type": "string",
-                          "nullable": true
-                        },
-                        "resolutions": {
+                  "oursBranch": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "theirsBranch": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "expectedHeadCommitId": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "resolutions": {
                     "type": "array",
                     "items": {
                       "type": "object",
@@ -2826,11 +2826,62 @@
                           },
                           "base": {},
                           "ours": {},
-                          "theirs": {}
+                          "theirs": {},
+                          "unit": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "type",
+                              "title"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "refContext": {
+                            "type": "object",
+                            "properties": {
+                              "baseCommitId": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "oursCommitId": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "theirsCommitId": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "baseCommitId",
+                              "oursCommitId",
+                              "theirsCommitId"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "pathTokens": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
                         },
                         "required": [
                           "unitId",
-                          "path"
+                          "path",
+                          "unit",
+                          "refContext"
                         ],
                         "additionalProperties": false
                       }
@@ -2884,7 +2935,21 @@
                         "path": "/fields/role",
                         "base": "Explorer",
                         "ours": "Scout",
-                        "theirs": "Navigator"
+                        "theirs": "Navigator",
+                        "unit": {
+                          "id": "unit_123",
+                          "type": "character",
+                          "title": "Captain Vela"
+                        },
+                        "refContext": {
+                          "baseCommitId": "commit_base_123",
+                          "oursCommitId": "commit_ours_123",
+                          "theirsCommitId": "commit_theirs_123"
+                        },
+                        "pathTokens": [
+                          "fields",
+                          "role"
+                        ]
                       }
                     ],
                     "previewMergedUnits": {
@@ -2964,50 +3029,6 @@
               }
             }
           },
-          "409": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "details": {}
-                      },
-                      "required": [
-                        "code",
-                        "message"
-                      ],
-                      "additionalProperties": false
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ],
-                  "additionalProperties": false,
-                  "example": {
-                    "error": {
-                      "code": "HEAD_CHANGED",
-                      "message": "Branch head changed",
-                      "details": {
-                        "branchName": "main",
-                        "expected": "commit_123",
-                        "actual": "commit_456"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
           "401": {
             "description": "Default Response",
             "content": {
@@ -3080,6 +3101,50 @@
                     "error": {
                       "code": "BRANCH_NOT_FOUND",
                       "message": "Branch not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "example": {
+                    "error": {
+                      "code": "HEAD_CHANGED",
+                      "message": "Branch head changed",
+                      "details": {
+                        "branchName": "main",
+                        "expected": "commit_123",
+                        "actual": "commit_456"
+                      }
                     }
                   }
                 }

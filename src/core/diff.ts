@@ -1,4 +1,5 @@
 import { DiffChange, UnitContent } from "./types.js";
+import { toPointer } from "./jsonPointer.js";
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -24,10 +25,9 @@ const isEqual = (a: unknown, b: unknown): boolean => {
   return false;
 };
 
-const joinPath = (base: string, key: string | number): string =>
-  base === "" ? `/${String(key)}` : `${base}/${String(key)}`;
+const joinPath = (base: string[], key: string | number): string[] => [...base, String(key)];
 
-const diffValues = (from: unknown, to: unknown, path: string, changes: DiffChange[], unitId: string) => {
+const diffValues = (from: unknown, to: unknown, path: string[], changes: DiffChange[], unitId: string) => {
   if (isEqual(from, to)) {
     return;
   }
@@ -45,7 +45,7 @@ const diffValues = (from: unknown, to: unknown, path: string, changes: DiffChang
     }
     return;
   }
-  changes.push({ unitId, path, from, to });
+  changes.push({ unitId, path: toPointer(path), from, to });
 };
 
 export const diffUnits = (
@@ -58,7 +58,7 @@ export const diffUnits = (
   for (const unitId of unitIds) {
     const fromUnit = fromUnits[unitId];
     const toUnit = toUnits[unitId];
-    diffValues(fromUnit, toUnit, "", changes, unitId);
+    diffValues(fromUnit, toUnit, [], changes, unitId);
   }
 
   return changes;

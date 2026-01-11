@@ -92,6 +92,13 @@ const merge = await client.mergeApply(world.id, {
 console.log("Merge commit:", merge.mergeCommitId);
 ```
 
+## Conflict payload details
+
+- `conflicts[].path` uses standard JSON Pointer encoding (RFC 6901). Tokens escape `~` as `~0` and `/` as `~1`.
+- `conflicts[].unit` provides a small summary `{ id, type, title }` for UI display.
+- `conflicts[].refContext` exposes `{ baseCommitId, oursCommitId, theirsCommitId }` for traceability.
+- `conflicts[].pathTokens` (optional) is the decoded token array for the `path`.
+
 ## OpenAPI type generation
 
 ```bash
