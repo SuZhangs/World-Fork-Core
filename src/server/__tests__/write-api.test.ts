@@ -53,6 +53,38 @@ describe.sequential("write APIs", () => {
     return jsonBody(response);
   };
 
+  it("accepts expectedHeadCommitId from branch head when starting from null", async () => {
+    const world = await createWorld("Optimistic Commit World");
+    const branches = await context.app!.inject({
+      method: "GET",
+      url: `/v1/worlds/${world.id}/branches?name=main`,
+      headers: { "x-api-key": context.apiKey }
+    });
+    const branchBody = jsonBody(branches);
+    expect(branchBody.items[0].headCommitId).toBeNull();
+
+    const commit = await context.app!.inject({
+      method: "POST",
+      url: `/v1/worlds/${world.id}/commits`,
+      payload: {
+        branchName: "main",
+        message: "Initial optimistic commit",
+        expectedHeadCommitId: null
+      },
+      headers: { "x-api-key": context.apiKey }
+    });
+    expect(commit.statusCode).toBe(201);
+    const commitBody = jsonBody(commit);
+
+    const updatedBranches = await context.app!.inject({
+      method: "GET",
+      url: `/v1/worlds/${world.id}/branches?name=main`,
+      headers: { "x-api-key": context.apiKey }
+    });
+    const updatedBranchBody = jsonBody(updatedBranches);
+    expect(updatedBranchBody.items[0].headCommitId).toBe(commitBody.id);
+  });
+
   it("returns HEAD_CHANGED when concurrent commits race", async () => {
     const world = await createWorld("Commit Conflict World");
     const baseCommit = await context.app!.inject({
