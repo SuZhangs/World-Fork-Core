@@ -76,6 +76,16 @@ WORLDFORK_AUTH=on npm run dev
 - **机器可读**：`http://localhost:3000/openapi.json`
 - **人可读**：`http://localhost:3000/docs`
 
+## Documentation
+
+- Audit report: `docs/audit/LATEST.md`
+- Roadmap: `docs/roadmap.md`
+- Contract: `docs/contract.md`
+
+## 开发者说明
+
+修改 API 或核心逻辑时，必须同步更新 `docs/audit/LATEST.md` 与 `docs/roadmap.md`。
+
 ## 契约边界与兼容性承诺
 
 - `/openapi.json` 是权威契约，SDK 类型由它生成。

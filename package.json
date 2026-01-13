@@ -12,6 +12,7 @@
     "openapi:export": "tsx scripts/export-openapi.ts",
     "openapi:check": "npm run openapi:export && (git diff --quiet openapi/openapi.json || (echo \"openapi/openapi.json 未同步，请运行 npm run openapi:export 并提交\" && exit 1))",
     "openapi:lint": "openapi validate openapi/openapi.json",
+    "audit:guard": "node scripts/audit-guard.mjs",
     "test": "vitest run",
     "prisma:migrate": "prisma migrate dev --name init",
     "key:create": "tsx scripts/create-api-key.ts",
